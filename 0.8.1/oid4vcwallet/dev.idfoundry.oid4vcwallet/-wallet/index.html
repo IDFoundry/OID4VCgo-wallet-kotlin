@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" charset="UTF-8">
+    <title>Wallet</title>
+    <link href="../../../images/logo-icon.svg" rel="icon" type="image/svg">
+        <script>var pathToRoot = "../../../";</script>
+    <script>document.documentElement.classList.replace("no-js", "js");</script>
+    <script>const storage = localStorage.getItem("dokka-dark-mode")
+      if (storage == null) {
+        const osDarkSchemePreferred = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+        if (osDarkSchemePreferred === true) {
+          document.getElementsByTagName("html")[0].classList.add("theme-dark")
+        }
+      } else {
+        const savedDarkMode = JSON.parse(storage)
+        if (savedDarkMode === true) {
+          document.getElementsByTagName("html")[0].classList.add("theme-dark")
+        }
+      }
+    </script>
+<script type="text/javascript" src="../../../scripts/sourceset_dependencies.js" async="async"></script>
+<link href="../../../styles/style.css" rel="Stylesheet">
+<link href="../../../styles/main.css" rel="Stylesheet">
+<link href="../../../styles/prism.css" rel="Stylesheet">
+<link href="../../../styles/logo-styles.css" rel="Stylesheet">
+<link href="../../../ui-kit/ui-kit.min.css" rel="Stylesheet">
+<script type="text/javascript" src="../../../scripts/safe-local-storage_blocking.js"></script>
+<script type="text/javascript" src="../../../scripts/navigation-loader.js" async="async"></script>
+<script type="text/javascript" src="../../../scripts/platform-content-handler.js" async="async"></script>
+<script type="text/javascript" src="../../../scripts/main.js" defer="defer"></script>
+<script type="text/javascript" src="../../../scripts/prism.js" async="async"></script>
+<script type="text/javascript" src="../../../ui-kit/ui-kit.min.js" defer="defer"></script>
+</head>
+<body>
+<div class="root">
+    <header class="navigation theme-dark" id="navigation-wrapper" role="banner">
+            <a class="library-name--link" href="../../../index.html" tabindex="1">
+                    oid4vcwallet
+            </a>
+        <button class="navigation-controls--btn navigation-controls--btn_toc ui-kit_mobile-only" id="toc-toggle"
+                type="button">Toggle table of contents
+        </button>
+        <div class="navigation-controls--break ui-kit_mobile-only"></div>
+        <div class="library-version" id="library-version">
+        </div>
+        <div class="navigation-controls">
+        <ul class="filter-section filter-section_loading" id="filter-section" aria-label="Target filter">
+                <button class="platform-tag platform-selector jvm-like" data-active="" aria-pressed="true"
+                        data-filter=":OID4VCWallet/release">release</button>
+            <div class="dropdown filter-section--dropdown" data-role="dropdown" id="filter-section-dropdown">
+                <button class="button button_dropdown filter-section--dropdown-toggle" role="combobox"
+                        data-role="dropdown-toggle"
+                        aria-controls="platform-tags-listbox"
+                        aria-haspopup="listbox"
+                        aria-expanded="false"
+                        aria-label="Toggle source sets"
+                ></button>
+                <ul role="listbox" id="platform-tags-listbox" class="dropdown--list" data-role="dropdown-listbox" aria-label="Target filter">
+                    <div class="dropdown--header"><span>Target filter</span>
+                        <button class="button" data-role="dropdown-toggle" aria-label="Close target filter">
+                            <i class="ui-kit-icon ui-kit-icon_cross"></i>
+                        </button>
+                    </div>
+                        <li role="option" class="dropdown--option platform-selector-option jvm-like" tabindex="0">
+                            <label class="checkbox">
+                                <input type="checkbox" class="checkbox--input" id=":OID4VCWallet/release"
+                                       data-filter=":OID4VCWallet/release"/>
+                                <span class="checkbox--icon"></span>
+                                release
+                            </label>
+                        </li>
+                </ul>
+                <div class="dropdown--overlay"></div>
+            </div>
+        </ul>
+            <button class="navigation-controls--btn navigation-controls--btn_theme" id="theme-toggle-button"
+                    type="button">Switch theme
+            </button>
+            <div class="navigation-controls--btn navigation-controls--btn_search" id="searchBar" role="button">Search in
+                API
+            </div>
+        </div>
+    </header>
+    <div id="container">
+        <nav id="leftColumn" class="sidebar" data-item-type="SECTION" data-item-config='{"defaultSize": 280, "minSize": 200, "maxSize": 400}'>
+            <a class="toc--skip-link" href="#main">Skip to content</a>
+            <div class="dropdown theme-dark_mobile" data-role="dropdown" id="toc-dropdown">
+                <ul role="listbox" id="toc-listbox" class="dropdown--list dropdown--list_toc-list"
+                    data-role="dropdown-listbox" aria-label="Table of contents">
+                    <div class="dropdown--header">
+                            <span>
+                                    oid4vcwallet
+                            </span>
+                        <button class="button" data-role="dropdown-toggle" aria-label="Close table of contents">
+                            <i class="ui-kit-icon ui-kit-icon_cross"></i>
+                        </button>
+                    </div>
+                    <div class="sidebar--inner" id="sideMenu"></div>
+                </ul>
+                <div class="dropdown--overlay"></div>
+            </div>
+        </nav>
+        <div id="resizer" class="resizer" data-item-type="BAR"></div>
+        <div id="main" data-item-type="SECTION" role="main">
+<div class="main-content" data-page-type="classlike" id="content" pageIds="oid4vcwallet::dev.idfoundry.oid4vcwallet/Wallet///PointingToDeclaration//1819772712">
+  <div class="breadcrumbs"><a href="../../../index.html">oid4vcwallet</a><span class="delimiter">/</span><a href="../index.html">dev.idfoundry.oid4vcwallet</a><span class="delimiter">/</span><span class="current">Wallet</span></div>
+  <div class="cover ">
+    <h1 class="cover"><span><span>Wallet</span></span></h1>
+    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">class </span><a href="index.html">Wallet</a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">configuration<span class="token operator">: </span><a href="../-wallet-configuration/index.html">WalletConfiguration</a><span class="token punctuation">, </span></span><span class="parameter ">keyStore<span class="token operator">: </span><a href="../-key-store/index.html">KeyStore</a><span class="token punctuation">, </span></span><span class="parameter ">credentialStore<span class="token operator">: </span><a href="../-credential-store/index.html">CredentialStore</a><span class="token punctuation">, </span></span><span class="parameter ">provider<span class="token operator">: </span><a href="../-wallet-provider/index.html">WalletProvider</a><span class="token operator">?</span></span></span><span class="token punctuation">)</span><span class="source-link-wrapper"><span class="source-link" data-element-type="source-link">(<a href="https://github.com/IDFoundry/OID4VCgo/tree/928bcb14bfb4130bd899806981d0d5ef457cbd94/mobile/android/OID4VCWallet/src/main/kotlin/dev/idfoundry/oid4vcwallet/Wallet.kt#L351">source</a>)</span></span></div><p class="paragraph">A holder's wallet: OID4VCgo's walletflow over the app's key store, credential store and Wallet Provider. Creating it makes no network calls; <span data-unresolved-link="dev.idfoundry.oid4vcwallet/Wallet//#dev.idfoundry.oid4vcwallet.WalletConfiguration#dev.idfoundry.oid4vcwallet.KeyStore#dev.idfoundry.oid4vcwallet.CredentialStore#dev.idfoundry.oid4vcwallet.WalletProvider?/PointingToCallableParameters(3)/">provider</span> is needed to receive credentials, not to present them.</p></div></div>
+  </div>
+  <div class="tabbedcontent">
+    <div class="tabs-section" tabs-section="tabs-section"><button class="section-tab" data-active="" data-togglable="CONSTRUCTOR,TYPE,PROPERTY,FUNCTION">Members</button></div>
+    <div class="tabs-section-body">
+      <div data-togglable="CONSTRUCTOR">
+        <h2 class="tableheader">Constructors</h2>
+        <div class="table"><a data-name="-901833651%2FConstructors%2F1819772712" anchor-label="Wallet" id="-901833651%2FConstructors%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-togglable="CONSTRUCTOR" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="-wallet.html"><span><span>Wallet</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-901833651%2FConstructors%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">constructor</span><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">configuration<span class="token operator">: </span><a href="../-wallet-configuration/index.html">WalletConfiguration</a><span class="token punctuation">, </span></span><span class="parameter ">keyStore<span class="token operator">: </span><a href="../-key-store/index.html">KeyStore</a><span class="token punctuation">, </span></span><span class="parameter ">credentialStore<span class="token operator">: </span><a href="../-credential-store/index.html">CredentialStore</a><span class="token punctuation">, </span></span><span class="parameter ">provider<span class="token operator">: </span><a href="../-wallet-provider/index.html">WalletProvider</a><span class="token operator">?</span></span></span><span class="token punctuation">)</span></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div data-togglable="TYPE">
+        <h2 class="tableheader">Types</h2>
+        <div class="table"><a data-name="-170995482%2FClasslikes%2F1819772712" anchor-label="Refreshed" id="-170995482%2FClasslikes%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="-refreshed/index.html"><span><span>Refreshed</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-170995482%2FClasslikes%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><div class="block"><div class="block"><span class="token annotation builtin">@</span><span data-unresolved-link="kotlinx.serialization/Serializable///PointingToDeclaration/"><span class="token annotation builtin">Serializable</span></span></div></div><span class="token keyword">data </span><span class="token keyword">class </span><a href="-refreshed/index.html">Refreshed</a><span class="token punctuation">(</span><span class="parameters "><span class="parameter "><span class="token keyword">val </span>credential<span class="token operator">: </span><a href="../-credential-summary/index.html">CredentialSummary</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>deferred<span class="token operator">: </span><a href="../-deferred-credential/index.html">DeferredCredential</a><span class="token operator">?</span><span class="token operator"> = </span>null</span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">What <a href="refresh-credential.html">refreshCredential</a> obtained.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div data-togglable="FUNCTION">
+        <h2 class="tableheader">Functions</h2>
+        <div class="table"><a data-name="-2020522229%2FFunctions%2F1819772712" anchor-label="abandonDeferred" id="-2020522229%2FFunctions%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="abandon-deferred.html"><span>abandon</span><wbr></wbr><span><span>Deferred</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-2020522229%2FFunctions%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="abandon-deferred.html"><span class="token function">abandonDeferred</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">id<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Gives up on a deferred credential — its access token has expired, say, or the holder no longer wants it — deleting it and its keys.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-1480378319%2FFunctions%2F1819772712" anchor-label="checkStatus" id="-1480378319%2FFunctions%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="check-status.html"><span>check</span><wbr></wbr><span><span>Status</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1480378319%2FFunctions%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="check-status.html"><span class="token function">checkStatus</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">id<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../-credential-summary/index.html">CredentialSummary</a></div><div class="brief "><p class="paragraph">Fetches the issuer's status list for a credential, checks its signature, and returns the credential with its revocation status recorded. The list covers many credentials, so fetching it doesn't tell the issuer which one is checked. A credential without a status list is returned as it is.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-681387698%2FFunctions%2F1819772712" anchor-label="credential" id="-681387698%2FFunctions%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="credential.html"><span><span>credential</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-681387698%2FFunctions%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="credential.html"><span class="token function">credential</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">id<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../-credential-detail/index.html">CredentialDetail</a></div><div class="brief "><p class="paragraph">One credential with its claims.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="430214673%2FFunctions%2F1819772712" anchor-label="credentials" id="430214673%2FFunctions%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="credentials.html"><span><span>credentials</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="430214673%2FFunctions%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="credentials.html"><span class="token function">credentials</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html">List</a><span class="token operator">&lt;</span><a href="../-credential-summary/index.html">CredentialSummary</a><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">Every credential the wallet holds.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-1041860976%2FFunctions%2F1819772712" anchor-label="deferredCredentials" id="-1041860976%2FFunctions%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="deferred-credentials.html"><span>deferred</span><wbr></wbr><span><span>Credentials</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1041860976%2FFunctions%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="deferred-credentials.html"><span class="token function">deferredCredentials</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html">List</a><span class="token operator">&lt;</span><a href="../-deferred-credential/index.html">DeferredCredential</a><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">The credentials issuers have deferred and not yet settled, oldest first — including ones from before the app last quit. Makes no network calls: poll each at its interval.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-1436785383%2FFunctions%2F1819772712" anchor-label="deleteCredential" id="-1436785383%2FFunctions%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="delete-credential.html"><span>delete</span><wbr></wbr><span><span>Credential</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1436785383%2FFunctions%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="delete-credential.html"><span class="token function">deleteCredential</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">id<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Deletes a credential and its holder keys, and its refresh grant once no other credential uses it, first revoking the refresh token at the Authorization Server, best effort.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-769108654%2FFunctions%2F1819772712" anchor-label="mdocCandidates" id="-769108654%2FFunctions%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="mdoc-candidates.html"><span>mdoc</span><wbr></wbr><span><span>Candidates</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-769108654%2FFunctions%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="mdoc-candidates.html"><span class="token function">mdocCandidates</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">origin<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html">List</a><span class="token operator">&lt;</span><a href="../-credential-summary/index.html">CredentialSummary</a><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">The held mdocs, each with whether the page at <a href="mdoc-candidates.html">origin</a> has been shown it and whether presenting it there now would be linkable (<code class="lang-kotlin">shownToVerifier</code>, <code class="lang-kotlin">linkableHere</code>): for a consent screen shown before the platform releases the request itself. <a href="../-mdoc-presentation/request.html">MdocPresentation.request</a> says the same once it has.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-868414347%2FFunctions%2F1819772712" anchor-label="pollDeferred" id="-868414347%2FFunctions%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="poll-deferred.html"><span>poll</span><wbr></wbr><span><span>Deferred</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-868414347%2FFunctions%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="poll-deferred.html"><span class="token function">pollDeferred</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">id<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../-deferred-status/index.html">DeferredStatus</a></div><div class="brief "><p class="paragraph">Asks the issuer once about a deferred credential. A refused one throws <a href="../-wallet-exception/-code/-companion/credential-denied.html">WalletException.Code.credentialDenied</a>, and is then no longer pending.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="185188521%2FFunctions%2F1819772712" anchor-label="refreshCredential" id="185188521%2FFunctions%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="refresh-credential.html"><span>refresh</span><wbr></wbr><span><span>Credential</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="185188521%2FFunctions%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="refresh-credential.html"><span class="token function">refreshCredential</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">id<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="-refreshed/index.html">Wallet.Refreshed</a></div><div class="brief "><p class="paragraph">Replaces a <code class="lang-kotlin">refreshable</code> credential's copies with a fresh batch, each bound to a new attested key, without the holder (OpenID4VCI 1.0 §13.5). Use it when <code class="lang-kotlin">copiesLeft</code> runs low. Throws <a href="../-wallet-exception/-code/-companion/reissue-required.html">WalletException.Code.reissueRequired</a> when it can't be refreshed: receive it again from a new offer.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="706152415%2FFunctions%2F1819772712" anchor-label="resumeIssuance" id="706152415%2FFunctions%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="resume-issuance.html"><span>resume</span><wbr></wbr><span><span>Issuance</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="706152415%2FFunctions%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="resume-issuance.html"><span class="token function">resumeIssuance</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">redirect<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../-issuance/index.html">Issuance</a></div><div class="brief "><p class="paragraph">Completes an authorization begun before the app was killed: <a href="resume-issuance.html">redirect</a> is the issuer's redirect back to the redirect URI, delivered to the app. Returns the issuance ready for <a href="../-issuance/request-credentials.html">Issuance.requestCredentials</a>. A redirect matching no authorization in progress — not this wallet's, already completed, or expired — throws <a href="../-wallet-exception/-code/-companion/not-found.html">WalletException.Code.notFound</a>.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="1461875030%2FFunctions%2F1819772712" anchor-label="startDCAPIPresentation" id="1461875030%2FFunctions%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="start-d-c-a-p-i-presentation.html"><span>start</span><wbr></wbr><span><span>DCAPIPresentation</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1461875030%2FFunctions%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="start-d-c-a-p-i-presentation.html"><span class="token function">startDCAPIPresentation</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">protocol<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">requestData<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html">ByteArray</a><span class="token punctuation">, </span></span><span class="parameter ">origin<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../-presentation/index.html">Presentation</a></div><div class="brief "><p class="paragraph">Parses an OpenID4VP request delivered through the Digital Credentials API (OpenID4VP 1.0 Appendix A), as Credential Manager hands it over: <a href="start-d-c-a-p-i-presentation.html">protocol</a> (<code class="lang-kotlin">openid4vp-v1-unsigned</code>, <code class="lang-kotlin">-signed</code> or <code class="lang-kotlin">-multisigned</code>), its <a href="start-d-c-a-p-i-presentation.html">requestData</a> (the request's <code class="lang-kotlin">data</code> object, as JSON) and the calling page's or app's <a href="start-d-c-a-p-i-presentation.html">origin</a>. It's answered as a presentation from <a href="start-presentation.html">startPresentation</a>, but <a href="../-presentation/respond.html">Presentation.respond</a> and <a href="../-presentation/decline.html">Presentation.decline</a> send nothing: each returns, in <a href="../-presentation/-presented/dcapi-response.html">Presentation.Presented.dcapiResponse</a>, the response's data for the platform to hand back.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-433471052%2FFunctions%2F1819772712" anchor-label="startIssuance" id="-433471052%2FFunctions%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="start-issuance.html"><span>start</span><wbr></wbr><span><span>Issuance</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-433471052%2FFunctions%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="start-issuance.html"><span class="token function">startIssuance</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">offer<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../-issuance/index.html">Issuance</a></div><div class="brief "><p class="paragraph">Resolves a Credential Offer (openid-credential-offer://…) and the issuer's metadata.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-1177380857%2FFunctions%2F1819772712" anchor-label="startMdocPresentation" id="-1177380857%2FFunctions%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="start-mdoc-presentation.html"><span>start</span><wbr></wbr><span>Mdoc</span><wbr></wbr><span><span>Presentation</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1177380857%2FFunctions%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="start-mdoc-presentation.html"><span class="token function">startMdocPresentation</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">requestData<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html">ByteArray</a><span class="token punctuation">, </span></span><span class="parameter ">origin<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../-mdoc-presentation/index.html">MdocPresentation</a></div><div class="brief "><p class="paragraph">Parses an <code class="lang-kotlin">org-iso-mdoc</code> request — an mdoc asked for over the Digital Credentials API — and finds the held mdocs that can answer it. <a href="start-mdoc-presentation.html">origin</a> is the requesting page's origin, as <a href="../-mdoc-presentation/-companion/origin.html">MdocPresentation.origin</a> serializes it.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="704773171%2FFunctions%2F1819772712" anchor-label="startPresentation" id="704773171%2FFunctions%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="start-presentation.html"><span>start</span><wbr></wbr><span><span>Presentation</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="704773171%2FFunctions%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="start-presentation.html"><span class="token function">startPresentation</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">request<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../-presentation/index.html">Presentation</a></div><div class="brief "><p class="paragraph">Fetches and verifies an OpenID4VP request (openid4vp://…), and finds the credentials that can answer it.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-1281978302%2FFunctions%2F1819772712" anchor-label="startProximityPresentation" id="-1281978302%2FFunctions%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="start-proximity-presentation.html"><span>start</span><wbr></wbr><span>Proximity</span><wbr></wbr><span><span>Presentation</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1281978302%2FFunctions%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">fun </span><a href="start-proximity-presentation.html"><span class="token function">startProximityPresentation</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">context<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/android/content/Context.html">Context</a><span class="token punctuation">, </span></span><span class="parameter ">timeouts<span class="token operator">: </span><a href="../-proximity-timeouts/index.html">ProximityTimeouts</a><span class="token operator"> = </span>ProximityTimeouts()</span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../-proximity-presentation/index.html">ProximityPresentation</a></div><div class="brief "><p class="paragraph">Starts an ISO/IEC 18013-5 in-person presentation over BLE: show its <a href="../-proximity-presentation/qr-code.html">ProximityPresentation.qrCode</a>; it advertises until a reader connects. It needs Bluetooth on and <a href="../-proximity-permissions/holder.html">ProximityPermissions.holder</a> granted (<a href="../-proximity-exception/index.html">ProximityException</a> otherwise).</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-1754176584%2FFunctions%2F1819772712" anchor-label="sweepOrphanedKeys" id="-1754176584%2FFunctions%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="sweep-orphaned-keys.html"><span>sweep</span><wbr></wbr><span>Orphaned</span><wbr></wbr><span><span>Keys</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1754176584%2FFunctions%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="sweep-orphaned-keys.html"><span class="token function">sweepOrphanedKeys</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">keyStore<span class="token operator">: </span><a href="../-android-keystore-key-store/index.html">AndroidKeystoreKeyStore</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></div><div class="brief "><p class="paragraph">Deletes every key in <a href="sweep-orphaned-keys.html">keyStore</a> that none of the wallet's credentials is bound to — left by an issuance the app quit or crashed in the middle of, or one dropped without <a href="../-issuance/close.html">Issuance.close</a> — and returns how many. Call it at launch, before any issuance or refresh: one in progress holds keys of its own.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    <div class="footer">
+        <div class="footer--container">
+            <a href="#content" id="go-to-top-link" class="footer--button footer--button_go-to-top"></a>
+            <div class="footer--content">
+                <div>
+                    <span>Generated by </span>
+                    <a class="footer--link footer--link_external" href="https://github.com/Kotlin/dokka">
+                        Dokka
+                    </a>
+                    <div>© 2026 Copyright</div>
+                </div>
+            </div>
+        </div>
+    </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
