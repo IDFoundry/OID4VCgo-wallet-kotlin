@@ -24,15 +24,15 @@ library. Your app owns the keys, the storage and the UI:
 
 ## Install
 
-Download `oid4vcwallet-0.8.1.aar` from [the release](https://github.com/IDFoundry/OID4VCgo-wallet-kotlin/releases/tag/0.8.1)
-(and `oid4vcwallet-0.8.1-sources.jar`, to browse its sources in
+Download `oid4vcwallet-0.8.2.aar` from [the release](https://github.com/IDFoundry/OID4VCgo-wallet-kotlin/releases/tag/0.8.2)
+(and `oid4vcwallet-0.8.2-sources.jar`, to browse its sources in
 Android Studio) into your app module's `libs/`, and add it with the
 libraries it uses:
 
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation(files("libs/oid4vcwallet-0.8.1.aar"))
+    implementation(files("libs/oid4vcwallet-0.8.2.aar"))
     implementation("androidx.annotation:annotation:1.7.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
@@ -41,7 +41,7 @@ dependencies {
 
 Check the download against the release's `SHA256SUMS`
 (`sha256sum -c SHA256SUMS`), and its provenance with the GitHub CLI:
-`gh attestation verify oid4vcwallet-0.8.1.aar --repo IDFoundry/OID4VCgo`.
+`gh attestation verify oid4vcwallet-0.8.2.aar --repo IDFoundry/OID4VCgo`.
 
 In-person presentation needs Bluetooth permissions, which the
 library's manifest adds to your app's: request
@@ -58,7 +58,7 @@ and an app can hold only one gomobile library. It's compiled for Kotlin
 - [Guides](docs/GettingStarted.md): getting started, receiving
   credentials, presenting from a link, to Chrome and in person,
   handling errors, and going to production.
-- [The API reference](https://idfoundry.github.io/OID4VCgo-wallet-kotlin/0.8.1/), for this
+- [The API reference](https://idfoundry.github.io/OID4VCgo-wallet-kotlin/0.8.2/), for this
   release.
 - [The Android library's sources](https://github.com/IDFoundry/OID4VCgo/tree/main/mobile/android/OID4VCWallet),
   mirrored in `sources/`.
