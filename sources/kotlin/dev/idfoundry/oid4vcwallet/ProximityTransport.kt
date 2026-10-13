@@ -1,6 +1,13 @@
 package dev.idfoundry.oid4vcwallet
 
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Carries one ISO/IEC 18013-5 session's whole messages between the
@@ -33,11 +40,65 @@ internal interface ProximityTransport {
     fun close()
 }
 
-/** The transport failed, or the other side ended the session ([peerEnded]). */
+/**
+ * Several transports at once, for a holder offering both BLE modes: it
+ * advertises and scans until a reader connects either way, keeps that
+ * transport and closes the others. It fails only once every one has.
+ */
+internal class EitherTransport(private val transports: List<ProximityTransport>) : ProximityTransport {
+    @Volatile private var chosen: ProximityTransport? = null
+
+    /** The one that connected. */
+    val connected: ProximityTransport? get() = chosen
+
+    override suspend fun connect(): Unit = coroutineScope {
+        val results = Channel<Result<ProximityTransport>>(transports.size)
+        val jobs: List<Job> = transports.map { t -> launch { results.send(runCatching { t.connect(); t }) } }
+        var failure: Throwable? = null
+        repeat(transports.size) {
+            val result = results.receive()
+            val winner = result.getOrNull()
+            if (winner != null) {
+                chosen = winner
+                // Wait for the others to stop before closing them: one
+                // still connecting could otherwise open a GATT server or
+                // client after its close(), which is then never closed.
+                jobs.forEach { it.cancel() }
+                withTimeoutOrNull(LOSER_STOP_TIMEOUT) { jobs.joinAll() }
+                transports.filter { it !== winner }.forEach { it.close() }
+                return@coroutineScope
+            }
+            failure = failure ?: result.exceptionOrNull()
+        }
+        throw failure ?: ProximityTransportException("couldn't connect")
+    }
+
+    override suspend fun send(message: ByteArray) {
+        (chosen ?: throw ProximityTransportException("the session hasn't started")).send(message)
+    }
+
+    override suspend fun receive(): ByteArray =
+        (chosen ?: throw ProximityTransportException("the session hasn't started")).receive()
+
+    override fun close() {
+        transports.forEach { it.close() }
+    }
+
+    private companion object {
+        val LOSER_STOP_TIMEOUT = 2.seconds
+    }
+}
+
+/**
+ * The transport failed, or the other side ended the session
+ * ([peerEnded]), or the device found isn't this session's reader
+ * ([wrongReader]: its Ident differs).
+ */
 internal class ProximityTransportException(
     message: String,
     val peerEnded: Boolean = false,
     cause: Throwable? = null,
+    val wrongReader: Boolean = false,
 ) : Exception(message, cause)
 
 /**

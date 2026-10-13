@@ -20,28 +20,37 @@ library. Your app owns the keys, the storage and the UI:
 - **Storage:** `FileCredentialStore` encrypts each record under a key
   that works only while the device is unlocked, out of backups.
 - **Wallet Provider:** you implement `WalletProvider`, which attests the
-  wallet.
+  wallet, for issuers that ask for attestations, as HAIP issuers do; pass
+  `null` for issuers that don't. Issuance follows each issuer's
+  metadata, or with `issuanceProfile = IssuanceProfile.HAIP` refuses
+  issuers outside HAIP.
 
 ## Install
 
-Download `oid4vcwallet-0.8.2.aar` from [the release](https://github.com/IDFoundry/OID4VCgo-wallet-kotlin/releases/tag/0.8.2)
-(and `oid4vcwallet-0.8.2-sources.jar`, to browse its sources in
+Download `oid4vcwallet-0.9.0.aar` from [the release](https://github.com/IDFoundry/OID4VCgo-wallet-kotlin/releases/tag/0.9.0)
+(and `oid4vcwallet-0.9.0-sources.jar`, to browse its sources in
 Android Studio) into your app module's `libs/`, and add it with the
 libraries it uses:
 
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation(files("libs/oid4vcwallet-0.8.2.aar"))
-    implementation("androidx.annotation:annotation:1.7.0")
+    implementation(files("libs/oid4vcwallet-0.9.0.aar"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
+    implementation("androidx.annotation:annotation:1.7.0")
+    implementation("androidx.credentials:credentials:1.7.0-alpha03")
+    implementation("androidx.credentials.registry:registry-provider:1.0.0-alpha05")
+    implementation("androidx.credentials.registry:registry-provider-play-services:1.0.0-alpha05")
+    implementation("androidx.credentials.registry:registry-digitalcredentials-openid:1.0.0-alpha05")
+    implementation("androidx.credentials.registry:registry-digitalcredentials-mdoc:1.0.0-alpha05")
+    implementation("androidx.credentials.registry:registry-digitalcredentials-sdjwtvc:1.0.0-alpha05")
 }
 ```
 
 Check the download against the release's `SHA256SUMS`
 (`sha256sum -c SHA256SUMS`), and its provenance with the GitHub CLI:
-`gh attestation verify oid4vcwallet-0.8.2.aar --repo IDFoundry/OID4VCgo`.
+`gh attestation verify oid4vcwallet-0.9.0.aar --repo IDFoundry/OID4VCgo`.
 
 In-person presentation needs Bluetooth permissions, which the
 library's manifest adds to your app's: request
@@ -49,16 +58,18 @@ library's manifest adds to your app's: request
 a session.
 
 The AAR goes in an app module: an Android library can't depend on a
-local AAR. It holds the Go library for arm64 and x86_64 (the emulator),
-and an app can hold only one gomobile library. It's compiled for Kotlin
-2.2 and later.
+local AAR. It holds the Go library for every Android ABI (arm64-v8a,
+armeabi-v7a, x86_64, x86; about 4 MB each, compressed), and an app can
+hold only one gomobile library. An app shipping 64-bit only filters the
+32-bit ones out: `ndk { abiFilters += listOf("arm64-v8a", "x86_64") }`.
+It's compiled for Kotlin 2.2 and later.
 
 ## Documentation
 
 - [Guides](docs/GettingStarted.md): getting started, receiving
   credentials, presenting from a link, to Chrome and in person,
   handling errors, and going to production.
-- [The API reference](https://idfoundry.github.io/OID4VCgo-wallet-kotlin/0.8.2/), for this
+- [The API reference](https://idfoundry.github.io/OID4VCgo-wallet-kotlin/0.9.0/), for this
   release.
 - [The Android library's sources](https://github.com/IDFoundry/OID4VCgo/tree/main/mobile/android/OID4VCWallet),
   mirrored in `sources/`.

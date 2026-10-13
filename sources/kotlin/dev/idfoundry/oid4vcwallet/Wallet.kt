@@ -12,6 +12,7 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import java.time.Instant
 import java.util.Locale
 import dev.idfoundry.oid4vcwallet.gomobile.mobile.Issuance as MobileIssuance
@@ -23,10 +24,18 @@ import dev.idfoundry.oid4vcwallet.gomobile.mobile.Wallet as MobileWallet
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
 public data class WalletConfiguration(
-    /** The wallet's registration with Authorization Servers. */
-    @SerialName("client_id") val clientID: String,
-    /** Where the issuer's pages send the holder back to: a private-use URI the app receives. */
-    @SerialName("redirect_uri") val redirectURI: String,
+    /**
+     * The wallet's registration with Authorization Servers: empty for a
+     * wallet with no [WalletProvider], receiving credentials only from
+     * pre-authorized codes redeemed with no client authentication.
+     */
+    @SerialName("client_id") val clientID: String = "",
+    /**
+     * Where the issuer's pages send the holder back to: a private-use URI
+     * the app receives. Empty for a wallet that receives only
+     * pre-authorized codes.
+     */
+    @SerialName("redirect_uri") val redirectURI: String = "",
     /** PEM certificates: the trust anchors for issuers' credentials, and for Verifiers' requests. */
     @SerialName("issuer_roots") val issuerRoots: String = "",
     /** PEM certificates: the trust anchors for Verifiers' requests. */
@@ -96,7 +105,63 @@ public data class WalletConfiguration(
     @SerialName("request_refresh") val requestRefresh: Boolean = false,
     /** Which copy of a credential a presentation uses. */
     @SerialName("copy_policy") val copyPolicy: CopyPolicy = CopyPolicy.PER_PRESENTATION,
+    /**
+     * Pins hosts' certificates for the wallet's own HTTPS requests:
+     * host → base64 SHA-256 digests of a certificate's
+     * SubjectPublicKeyInfo, one of which a certificate in the verified
+     * chain must have, or the request fails as `tlsPin` before anything
+     * is sent. A host is a name, or `*.` and one, matching any name a
+     * label below it; not an IP address. Pins add to certificate
+     * verification, never replace it: pin a CA's key, so a leaf renewal
+     * doesn't break the app, and keep a backup pin. They cover the
+     * requests the SDK makes (issuers, Authorization Servers, Verifiers,
+     * status lists), not the app's own, such as to its Wallet Provider:
+     * pin that client yourself (OkHttp's CertificatePinner, or a network
+     * security configuration).
+     */
+    @SerialName("tls_pins") val tlsPins: Map<String, List<String>> = emptyMap(),
+    /** The profile issuance follows. */
+    @SerialName("issuance_profile") val issuanceProfile: IssuanceProfile = IssuanceProfile.OPENID4VCI,
+    /**
+     * How an in-person response authenticates the mdoc. [ProximityDeviceAuth.MAC_PREFERRED]
+     * needs a key store that is also a [KeyAgreement].
+     */
+    @SerialName("proximity_device_auth") val proximityDeviceAuth: ProximityDeviceAuth = ProximityDeviceAuth.SIGNATURE,
 ) {
+    /** How an in-person response authenticates the mdoc (ISO/IEC 18013-5 §9.1.3). */
+    @Serializable
+    public enum class ProximityDeviceAuth {
+        /** The holder key signs the session transcript (deviceSignature). The default. */
+        @SerialName("signature") SIGNATURE,
+
+        /**
+         * The holder key agrees a key with the reader's ephemeral key and
+         * the response carries a MAC (deviceMac). The reader can check it
+         * but can't prove to anyone else that this device took part; the
+         * issuer-signed elements stay provable. A holder key that can't
+         * agree keys signs instead.
+         */
+        @SerialName("mac_preferred") MAC_PREFERRED,
+    }
+
+    /** The profile issuance follows. */
+    @Serializable
+    public enum class IssuanceProfile {
+        /**
+         * The issuer's and its Authorization Server's metadata, as
+         * OpenID4VCI 1.0 has a wallet do: a Wallet Attestation and a key
+         * attestation only where they ask for them. The default.
+         */
+        @SerialName("openid4vci") OPENID4VCI,
+
+        /**
+         * Also refuses an issuer that doesn't follow HAIP 1.0
+         * ([WalletException.Code.profileViolation]). Needs a
+         * [WalletProvider] and a `clientID`.
+         */
+        @SerialName("haip") HAIP,
+    }
+
     /**
      * Which copy of a credential a presentation uses (OpenID4VCI 1.0: "a
      * unique Credential per presentation or per Verifier").
@@ -371,7 +436,9 @@ public class Wallet(
         val wp = provider?.let(::WalletProviderAdapter)
         val config = json.encodeToString(WalletConfiguration.serializer(), configuration)
         handle = OID4VC.wrap { Mobile.newWallet(config, keys, credentials, wp) }
-        adapters = listOfNotNull(keys, credentials, wp)
+        val agreement = (keyStore as? KeyAgreement)?.let(::KeyAgreementAdapter)
+        agreement?.let(handle::setKeyAgreement)
+        adapters = listOfNotNull(keys, credentials, wp, agreement)
     }
 
     /**
@@ -500,6 +567,13 @@ public class Wallet(
      * and [Presentation.decline] send nothing: each returns, in
      * [Presentation.Presented.dcapiResponse], the response's data for the
      * platform to hand back.
+     *
+     * [origin] must be one the platform verified: Credential Manager's
+     * `CallingAppInfo.getOrigin` for a privileged browser, or the calling
+     * app's signing-certificate origin. Never take it from the request:
+     * an unsigned request names no Verifier but its origin, and presented
+     * copies are bound to it. A request that can't be parsed is
+     * [WalletException.Code.invalidInput].
      */
     public suspend fun startDCAPIPresentation(protocol: String, requestData: ByteArray, origin: String): Presentation =
         Presentation(OID4VC.cancellable { op -> handle.startDCAPIPresentation(op, protocol, requestData, origin) })
@@ -526,20 +600,31 @@ public class Wallet(
 
     /**
      * Starts an ISO/IEC 18013-5 in-person presentation over BLE: show
-     * its [ProximityPresentation.qrCode]; it advertises until a reader
-     * connects. It needs Bluetooth on and [ProximityPermissions.holder]
-     * granted ([ProximityException] otherwise).
+     * its [ProximityPresentation.qrCode]. In [modes], both by default, it
+     * advertises for a reader (peripheral server mode) and scans for one
+     * (central client mode) until a reader connects either way; a reader
+     * offered both should choose central client mode. It needs
+     * Bluetooth on and [ProximityPermissions.holder] for [modes] granted
+     * ([ProximityException] otherwise).
      */
-    public fun startProximityPresentation(context: Context, timeouts: ProximityTimeouts = ProximityTimeouts()): ProximityPresentation {
-        ProximityPermissions.require(context, ProximityPermissions.holder)
+    public fun startProximityPresentation(
+        context: Context,
+        timeouts: ProximityTimeouts = ProximityTimeouts(),
+        modes: Set<ProximityBLEMode> = ProximityBLEMode.entries.toSet(),
+    ): ProximityPresentation {
+        require(modes.isNotEmpty()) { "no BLE mode" }
+        ProximityPermissions.require(context, ProximityPermissions.holder(modes))
         val app = context.applicationContext
-        return ProximityPresentation(OID4VC.wrap { handle.startProximityPresentation() }, { uuid ->
-            GattServerTransport(app, uuid, GattCharacteristics.peripheralServer)
-        }, timeouts)
+        return ProximityPresentation(start(modes), { it.transport(app) }, timeouts)
     }
 
-    internal fun startProximityPresentation(timeouts: ProximityTimeouts, transport: ProximityTransport): ProximityPresentation =
-        ProximityPresentation(OID4VC.wrap { handle.startProximityPresentation() }, { transport }, timeouts)
+    internal fun startProximityPresentation(timeouts: ProximityTimeouts, transport: ProximityTransport, modes: Set<ProximityBLEMode> = setOf(ProximityBLEMode.PERIPHERAL_SERVER)): ProximityPresentation =
+        ProximityPresentation(start(modes), { transport }, timeouts)
+
+    private fun start(modes: Set<ProximityBLEMode>) = OID4VC.wrap {
+        // In the order Go lists them: peripheral server mode first.
+        handle.startProximityPresentationWithModes(json.encodeToString(ListSerializer(String.serializer()), ProximityBLEMode.entries.filter { it in modes }.map { it.rawValue }))
+    }
 }
 
 /** What a Credential Offer offers. */
@@ -795,6 +880,12 @@ public class Presentation internal constructor(private val handle: MobilePresent
         @SerialName("credential_id") val credentialID: String,
         /** The claims it would disclose, as paths. */
         val claims: List<List<PathElement>>,
+        /**
+         * An SD-JWT VC's claims its issuer didn't make selectively
+         * disclosable: the Verifier receives them whatever the selection.
+         * Show them with [claims].
+         */
+        @SerialName("always_disclosed") val alwaysDisclosed: List<List<PathElement>> = emptyList(),
     )
 
     /** What responding or declining sent. */
@@ -918,7 +1009,17 @@ public class MdocPresentation internal constructor(private val handle: MobileMdo
         @Serializable(Base64Serializer::class) val response: ByteArray,
         /** Whether the copy presented had been seen by another Verifier. */
         val linkable: Boolean = false,
-    )
+    ) {
+        /**
+         * The response as the data member of a platform's Digital
+         * Credentials API response, for a platform that takes the whole
+         * object (ISO/IEC TS 18013-7 Annex C): `{"response":
+         * base64url(EncryptedResponse)}`, as JSON. iOS takes [response]
+         * itself; on Android, [DigitalCredentials.response] wraps it.
+         */
+        public fun responseData(): String =
+            json.encodeToString(JsonObject.serializer(), JsonObject(mapOf("response" to JsonPrimitive(java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(response)))))
+    }
 
     /** What's asked: show it for the holder's consent. */
     public val request: Request = decode(handle.request())
@@ -940,7 +1041,9 @@ public class MdocPresentation internal constructor(private val handle: MobileMdo
          * [url]'s web origin, as a browser serializes it and the session
          * transcript binds it: `scheme://host`, with the port only when it
          * isn't the scheme's default, and no path — the form
-         * [Wallet.startMdocPresentation] takes.
+         * [Wallet.startMdocPresentation] takes. For a platform that
+         * reports a page's URL; Credential Manager reports the origin
+         * itself ([DigitalCredentials.Request.origin]).
          */
         public fun origin(url: String): String? {
             val uri = runCatching { java.net.URI(url) }.getOrNull() ?: return null

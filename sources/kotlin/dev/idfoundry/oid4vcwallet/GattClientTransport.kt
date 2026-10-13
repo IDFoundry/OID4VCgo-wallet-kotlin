@@ -31,8 +31,11 @@ import java.util.UUID
 /**
  * The GATT client's side of a session: scans for [serviceUUID],
  * connects, subscribes and starts the session. The reader in mdoc
- * peripheral server mode. Bluetooth permissions are the caller's to
- * have checked.
+ * peripheral server mode, and the holder in mdoc central client mode,
+ * where it first reads the reader's Ident characteristic and
+ * disconnects unless it's [ident] (§8.3.3.1.1.4), ignoring that device
+ * from then on. Bluetooth
+ * permissions are the caller's to have checked.
  *
  * Android's own failures are worked around as Multipaz does: a scan
  * that reports nothing for [SCAN_RESTART_MS] is restarted (Android
@@ -45,24 +48,33 @@ internal class GattClientTransport(
     private val context: Context,
     private val serviceUUID: UUID,
     private val characteristics: GattCharacteristics,
+    private val ident: ByteArray? = null,
 ) : ProximityTransport {
     private val manager = context.getSystemService(BluetoothManager::class.java)
         ?: throw ProximityTransportException("this device has no Bluetooth")
 
     private var gatt: BluetoothGatt? = null
+    /** The pending characteristic read's value, null when it failed. */
+    private val reads = Channel<ByteArray?>(Channel.CONFLATED)
     private var state: BluetoothGattCharacteristic? = null
     private var client2Server: BluetoothGattCharacteristic? = null
 
     /** The pending GATT operation's result, one at a time. */
     private val results = Channel<Int>(Channel.CONFLATED)
-    private val incoming = Channel<ByteArray>(Channel.UNLIMITED)
+    /**
+     * This connection attempt's messages, and its chunks so far: a failed
+     * attempt closes its channel for good, so each attempt starts anew.
+     */
+    @Volatile private var incoming = Channel<ByteArray>(Channel.UNLIMITED)
     private val sending = Mutex()
-    private val reassembler = BleChunks.Reassembler()
+    @Volatile private var reassembler = BleChunks.Reassembler()
 
     @Volatile private var connection: CompletableDeferred<Int>? = null
     @Volatile private var mtu = BleChunks.DEFAULT_MTU
     @Volatile private var sessionStarted = false
     @Volatile private var closed = false
+    /** Devices whose Ident wasn't this session's reader's: never again. */
+    private val ignored: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
 
     private val callback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
@@ -97,6 +109,18 @@ internal class GattClientTransport(
             results.trySend(status)
         }
 
+        override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, value: ByteArray, status: Int) {
+            reads.trySend(if (status == BluetoothGatt.GATT_SUCCESS) value else null)
+        }
+
+        @Deprecated("Before Android 13")
+        override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
+            @Suppress("DEPRECATION")
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                reads.trySend(if (status == BluetoothGatt.GATT_SUCCESS) characteristic.value else null)
+            }
+        }
+
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, value: ByteArray) {
             changed(characteristic.uuid, value)
         }
@@ -125,20 +149,54 @@ internal class GattClientTransport(
         val adapter = manager.adapter
         if (adapter == null || !adapter.isEnabled) throw ProximityTransportException("Bluetooth is off")
         var lastStatus = 0
-        repeat(CONNECT_ATTEMPTS) { attempt ->
-            val device = scan()
-            val status = attemptConnection(device)
-            if (status == BluetoothGatt.GATT_SUCCESS) {
-                start()
-                return
-            }
+        var attempt = 0
+        while (attempt < CONNECT_ATTEMPTS) {
+            if (closed) throw ProximityTransportException(SESSION_ENDED)
+            // A device that failed before (disconnecting mid-setup,
+            // leaving half a message) mustn't spoil this attempt.
+            incoming = Channel(Channel.UNLIMITED)
+            reassembler = BleChunks.Reassembler()
+            val status = tryDevice(scan())
+            if (status == BluetoothGatt.GATT_SUCCESS) return
+            // Another session's reader: keep looking for this one's, until
+            // the caller's connect timeout, without spending an attempt.
+            if (status == WRONG_READER) continue
             lastStatus = status
-            Log.i(TAG, "connecting failed with status $status (attempt ${attempt + 1} of $CONNECT_ATTEMPTS)")
+            attempt++
+            Log.i(TAG, "connecting failed with status $status (attempt $attempt of $CONNECT_ATTEMPTS)")
             gatt?.close()
             gatt = null
             delay(RETRY_DELAY_MS)
         }
         throw ProximityTransportException("couldn't connect to the other device (status $lastStatus)")
+    }
+
+    /**
+     * Connects to [device] and starts the session: GATT_SUCCESS once it's
+     * started, [WRONG_READER] for a device whose Ident isn't this
+     * session's reader's (now ignored), else the failure's GATT status. A
+     * device that disconnects or stops answering mid-setup is one failed
+     * attempt, as any other; a closed session throws.
+     */
+    private suspend fun tryDevice(device: BluetoothDevice): Int {
+        val status = attemptConnection(device)
+        if (status != BluetoothGatt.GATT_SUCCESS) return status
+        try {
+            start()
+            return BluetoothGatt.GATT_SUCCESS
+        } catch (e: ProximityTransportException) {
+            if (closed) throw e
+            gatt?.disconnect()
+            if (!e.wrongReader) {
+                Log.i(TAG, "starting the session failed: ${e.message}")
+                return BluetoothGatt.GATT_FAILURE
+            }
+            Log.i(TAG, "ignoring a device that isn't this session's reader")
+            ignored.add(device.address)
+            gatt?.close()
+            gatt = null
+            return WRONG_READER
+        }
     }
 
     /** Scans until a device advertising [serviceUUID] is found. */
@@ -148,7 +206,7 @@ internal class GattClientTransport(
             val found = CompletableDeferred<BluetoothDevice>()
             val scanCallback = object : ScanCallback() {
                 override fun onScanResult(callbackType: Int, result: ScanResult) {
-                    found.complete(result.device)
+                    if (result.device.address !in ignored) found.complete(result.device)
                 }
 
                 override fun onScanFailed(errorCode: Int) {
@@ -194,12 +252,26 @@ internal class GattClientTransport(
         val c2s = service.getCharacteristic(characteristics.client2Server)
         val s2c = service.getCharacteristic(characteristics.server2Client)
         if (st == null || c2s == null || s2c == null) throw ProximityTransportException("the mdoc service lacks a characteristic")
+        if (ident != null) checkIdent(g, service.getCharacteristic(characteristics.ident ?: error("no Ident in this mode")))
         state = st
         client2Server = c2s
         subscribe(g, s2c)
         subscribe(g, st)
         write(st, byteArrayOf(GattCharacteristics.STATE_START))
         sessionStarted = true
+    }
+
+    /** Reads the reader's Ident: a device advertising the service UUID that isn't this session's reader is refused, [ProximityTransportException.wrongReader]. */
+    private suspend fun checkIdent(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic?) {
+        characteristic ?: throw ProximityTransportException("the reader's service lacks Ident")
+        while (reads.tryReceive().isSuccess) Unit
+        @Suppress("DEPRECATION")
+        if (!g.readCharacteristic(characteristic)) throw ProximityTransportException("couldn't read the reader's Ident")
+        val value = withTimeoutOrNull(OPERATION_TIMEOUT_MS) { reads.receive() }
+            ?: throw ProximityTransportException("couldn't read the reader's Ident")
+        if (!value.contentEquals(ident)) {
+            throw ProximityTransportException("the device found isn't this session's reader (its Ident differs)", wrongReader = true)
+        }
     }
 
     private suspend fun subscribe(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
@@ -221,7 +293,7 @@ internal class GattClientTransport(
 
     /** Writes [value] to [characteristic], without response, and waits until it's sent. */
     private suspend fun write(characteristic: BluetoothGattCharacteristic, value: ByteArray) {
-        val g = gatt ?: throw ProximityTransportException("the session ended")
+        val g = gatt ?: throw ProximityTransportException(SESSION_ENDED)
         drain()
         val type = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
         val queued = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -256,11 +328,15 @@ internal class GattClientTransport(
         try {
             incoming.receive()
         } catch (e: ClosedReceiveChannelException) {
-            throw ProximityTransportException("the session ended", peerEnded = true, cause = e)
+            throw ProximityTransportException(SESSION_ENDED, peerEnded = true, cause = e)
         }
 
     private fun fail(e: ProximityTransportException) {
         incoming.close(e)
+        // A device that disconnects during the Ident read or an
+        // operation: fail them now rather than at their timeouts.
+        reads.trySend(null)
+        results.trySend(BluetoothGatt.GATT_FAILURE)
     }
 
     override fun close() {
@@ -288,6 +364,9 @@ internal class GattClientTransport(
 
     private companion object {
         const val TAG = "OID4VCProximity"
+        /** [tryDevice]'s answer for another session's reader: no GATT status is negative. */
+        const val WRONG_READER = -1
+        const val SESSION_ENDED = "the session ended"
         const val SCAN_RESTART_MS = 10_000L
         const val CONNECT_ATTEMPTS = 10
         const val CONNECT_TIMEOUT_MS = 10_000L

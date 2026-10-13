@@ -20,6 +20,11 @@ services on loopback addresses are refused. The rest is the app's.
   `InMemoryCredentialStore` is for tests.
 - Call `Wallet.sweepOrphanedKeys` at launch, before any issuance, so keys
   an interrupted issuance left don't accumulate.
+- Make one `Wallet` per key store and credential store, and share it
+  for the app's life. Two over the same stores don't coordinate: both
+  could present the same copy of a credential, so Verifiers could link
+  the presentations, or redeem the same refresh token, so the
+  authorization server revokes the grant.
 - A device restored from a backup, or a new one the app moved to, has no
   holder keys: its credentials show `holderKeyPresent` as false and
   can't be presented. Delete them, and receive them again.
@@ -43,6 +48,13 @@ wallet's provider attests anything, and is for development only.
 - For readers, `mdocReaderRoots` with `mdocReaderRequireEKU`, and
   `requireTrustedMdocReader` where every reader must be a known one.
 - Never ship with `development` set, or `developmentRoots`.
+- To pin your services' certificates, set `tlsPins`: host → base64
+  SHA-256 digests of a certificate's SubjectPublicKeyInfo. Pin a CA's
+  key, so a leaf renewal doesn't break the app, and keep a backup pin:
+  a wrong set locks the wallet out of that host until an update. Pins
+  cover the SDK's own requests, not your app's, such as to your Wallet
+  Provider: pin that client yourself (OkHttp's `CertificatePinner`, or
+  a network security configuration).
 - As a Credential Manager provider, see the open caveat in
   [Presenting to Chrome](PresentingToChrome.md).
 
