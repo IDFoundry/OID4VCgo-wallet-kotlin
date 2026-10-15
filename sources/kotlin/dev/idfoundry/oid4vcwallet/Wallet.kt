@@ -74,7 +74,16 @@ public data class WalletConfiguration(
      * [verifierRoots] accepts.
      */
     @SerialName("require_signed_dcapi_requests") val requireSignedDCAPIRequests: Boolean = false,
-    /** Allows services on loopback addresses. */
+    /**
+     * Relaxes what production requires, for a wallet talking to services
+     * on a development machine. Never ship an app with it set. It lets
+     * issuers, Authorization Servers, Verifiers and status lists be on
+     * loopback addresses, over http there too; with [developmentRoots],
+     * makes requests through an ordinary HTTPS client, without the
+     * hardened one's refusal of private network addresses; and skips the
+     * production checks on receiving credentials: durable stores and
+     * keys, and the random source.
+     */
     val development: Boolean = false,
     /**
      * PEM certificates the wallet's HTTPS requests trust besides the
@@ -127,6 +136,21 @@ public data class WalletConfiguration(
      * needs a key store that is also a [KeyAgreement].
      */
     @SerialName("proximity_device_auth") val proximityDeviceAuth: ProximityDeviceAuth = ProximityDeviceAuth.SIGNATURE,
+    /**
+     * A dotted object identifier: recognizes only Verifier certificates
+     * under [verifierRoots] with that extended key usage, the one your
+     * ecosystem marks its Verifiers' certificates with. Outside
+     * [development], required when [verifierRoots] shares a trust anchor
+     * with another role's roots.
+     */
+    @SerialName("verifier_require_eku") val verifierRequireEKU: String = "",
+    /**
+     * A dotted object identifier: recognizes only registrar certificates
+     * under [registrarRoots] with that extended key usage. Outside
+     * [development], required when [registrarRoots] shares a trust
+     * anchor with another role's roots.
+     */
+    @SerialName("registrar_require_eku") val registrarRequireEKU: String = "",
 ) {
     /** How an in-person response authenticates the mdoc (ISO/IEC 18013-5 §9.1.3). */
     @Serializable
