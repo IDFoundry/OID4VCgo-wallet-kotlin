@@ -1,0 +1,1 @@
+sourceset_dependencies='{":OID4VCWallet/release":[]}'
