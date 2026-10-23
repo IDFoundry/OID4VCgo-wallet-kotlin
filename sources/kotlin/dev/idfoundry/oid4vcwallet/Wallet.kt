@@ -273,7 +273,10 @@ public data class WalletConfiguration(
 
 /**
  * An image the issuer names for display: an https URL or a data: image
- * (nothing else reaches the app), with alternative text.
+ * (nothing else reaches the app, nor an https URL naming an IP address or
+ * localhost), with alternative text. Loading the URL tells whoever serves
+ * it that the holder is looking: fetch it once, when the holder accepts
+ * the credential rather than on the offer's preview, and keep it.
  *
  * @property uri The image: an https URL or a `data:` URL.
  * @property altText Text describing the image, for accessibility.
@@ -1091,9 +1094,9 @@ public class Presentation internal constructor(private val handle: MobilePresent
     /**
      * The selection the wallet would make itself, for an app with no
      * policy of its own, or to start from: the first answerable option
-     * of each credential set, and each query's first credential (all of
-     * them when it takes several). Throws `noMatchingCredential` when
-     * the request can't be answered.
+     * of each credential set, and each query's first credential, even
+     * when it takes several: the holder adds the others. Throws
+     * `noMatchingCredential` when the request can't be answered.
      */
     public suspend fun defaultSelection(): Selection {
         return decode<SelectionResult>(OID4VC.offMain { handle.defaultSelection() }).selection
