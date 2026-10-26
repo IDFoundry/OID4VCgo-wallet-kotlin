@@ -203,7 +203,62 @@ public data class WalletConfiguration(
      * alone.
      */
     @SerialName("allow_foreign_iss") val allowForeignIss: Boolean = false,
+    /**
+     * PEM certificates: the IACAs a received mdoc must chain to, in place
+     * of [issuerRoots], so an [issuerRoots] anchor alone, an SD-JWT VC
+     * issuer's CA say, can't sign an mDL. Empty: mdocs chain to
+     * [issuerRoots].
+     */
+    @SerialName("mdoc_issuer_roots") val mdocIssuerRoots: String = "",
+    /**
+     * Each document type's own IACAs, as PEM certificates: an mdoc of a
+     * type named here must chain to them, not to [mdocIssuerRoots] or
+     * [issuerRoots]. A type named with an empty string is refused.
+     */
+    @SerialName("mdoc_issuer_roots_by_doctype") val mdocIssuerRootsByDocType: Map<String, String> = emptyMap(),
+    /**
+     * A dotted object identifier: recognizes only document signer
+     * certificates with that extended key usage (the mDL's is
+     * 1.0.18013.5.1.2), in place of [issuerRequireEKU], so a wallet
+     * receiving both formats can require each its own.
+     */
+    @SerialName("mdoc_issuer_require_eku") val mdocIssuerRequireEKU: String = "",
+    /**
+     * PEM `X509 CRL` blocks: the Certificate Revocation Lists the roles
+     * in [revocation] are checked against. Replace them at runtime with
+     * [Wallet.setCRLs] as they expire.
+     */
+    @SerialName("crls") val crls: String = "",
+    /**
+     * The trust roles whose certificate chains must pass a CRL check
+     * against [crls]. A role listed fails closed for any CA it has no
+     * current CRL from, until [Wallet.setCRLs] supplies one; a role not
+     * listed checks no revocation.
+     */
+    @SerialName("revocation") val revocation: List<RevocationRole> = emptyList(),
 ) {
+    /** A trust role whose certificates can be checked for revocation. */
+    @Serializable
+    public enum class RevocationRole {
+        /** The issuers' signing certificates ([issuerRoots] and the mdoc roots), on receipt, deferral and refresh. */
+        @SerialName("issuer") ISSUER,
+
+        /** The signers of Credential Issuer Metadata ([issuerMetadataRoots]). */
+        @SerialName("issuer_metadata") ISSUER_METADATA,
+
+        /** The registrars of Verifiers ([registrarRoots]). */
+        @SerialName("registrar") REGISTRAR,
+
+        /** The mdoc readers ([mdocReaderRoots]), online and in person. */
+        @SerialName("mdoc_reader") MDOC_READER,
+
+        /** The Verifiers' request-signing certificates ([verifierRoots]). */
+        @SerialName("verifier") VERIFIER,
+
+        /** The signers of status lists, in [Wallet.checkStatus]. */
+        @SerialName("status") STATUS,
+    }
+
     /** How an in-person response authenticates the mdoc (ISO/IEC 18013-5 §9.1.3). */
     @Serializable
     public enum class ProximityDeviceAuth {
@@ -576,6 +631,20 @@ public class Wallet(
      */
     public suspend fun refreshCredential(id: String): Refreshed =
         decode(OID4VC.cancellable { op -> handle.refreshCredential(op, id) })
+
+    /**
+     * Replaces the Certificate Revocation Lists the configuration's
+     * [WalletConfiguration.revocation] roles are checked against with
+     * [pem]'s `X509 CRL` blocks, for every check from now on. CRLs expire
+     * at their nextUpdate: fetch fresh ones and call this before then.
+     * Text holding anything else, or a list that doesn't parse, throws
+     * `invalidInput` and keeps the lists as they were; empty text removes
+     * them all, and a role checked then fails closed. Makes no network
+     * calls.
+     */
+    public suspend fun setCRLs(pem: String) {
+        OID4VC.offMain { handle.setCRLs(pem) }
+    }
 
     /**
      * Deletes a credential and its holder keys, and its refresh grant
@@ -1015,8 +1084,9 @@ public class Presentation internal constructor(private val handle: MobilePresent
         val credentials: List<CredentialSummary> = emptyList(),
         /**
          * For a Verifier with a verified registration: the claims paths
-         * this query asks for beyond it, and whether it asks for every
-         * claim. Nothing is refused for them: the holder decides.
+         * this query asks for beyond it, then those its credentials would
+         * disclose along with them beyond it (the rest of an array
+         * disclosed as one, say). Nothing is refused for them: the holder decides.
          */
         val unregistered: List<List<PathElement>> = emptyList(),
         /** Whether it asks for every claim, beyond a verified registration. */
@@ -1045,9 +1115,11 @@ public class Presentation internal constructor(private val handle: MobilePresent
         val claims: List<List<PathElement>>,
         /**
          * The SD-JWT VC claims the Verifier receives beyond [claims]:
-         * those its issuer didn't make selectively disclosable, and the
-         * plaintext members of a disclosed object a claim sits within.
-         * Show them with [claims].
+         * those its issuer didn't make selectively disclosable, and what
+         * shares a Disclosure with a claim: the plaintext members of a
+         * disclosed object or array element a claim sits within, and the
+         * other elements of an array disclosed as one. Show them with
+         * [claims].
          */
         @SerialName("always_disclosed") val alwaysDisclosed: List<List<PathElement>> = emptyList(),
         /**
