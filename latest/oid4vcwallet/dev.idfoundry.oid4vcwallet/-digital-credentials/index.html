@@ -107,14 +107,29 @@
   <div class="breadcrumbs"><a href="../../../index.html">oid4vcwallet</a><span class="delimiter">/</span><a href="../index.html">dev.idfoundry.oid4vcwallet</a><span class="delimiter">/</span><span class="current">DigitalCredentials</span></div>
   <div class="cover ">
     <h1 class="cover"><span>Digital</span><wbr></wbr><span><span>Credentials</span></span></h1>
-    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">object </span><a href="index.html">DigitalCredentials</a><span class="source-link-wrapper"><span class="source-link" data-element-type="source-link">(<a href="https://github.com/IDFoundry/OID4VCgo/tree/a143175ed7e71fc5024f42a2321ede81f705b5e3/mobile/android/OID4VCWallet/src/main/kotlin/dev/idfoundry/oid4vcwallet/DigitalCredentials.kt#L58">source</a>)</span></span></div><p class="paragraph">Credential Manager's side of the Digital Credentials API: what an app needs so Chrome, or another app, can ask the wallet for a credential.</p><ol><li><p class="paragraph"><a href="register.html">register</a> the wallet's credentials after every change, so the     system's chooser offers them for the requests they can answer.</p></li><li><p class="paragraph">Declare an exported activity with an intent filter for     <code class="lang-kotlin">androidx.credentials.registry.provider.action.GET_CREDENTIAL</code>.     Credential Manager starts it when the holder picks one.</p></li><li><p class="paragraph">In it, read the <a href="request.html">request</a>, show it for the holder's consent with     <a href="-request/start-presentation.html">Request.startPresentation</a> (or <a href="-request/start-mdoc-presentation.html">Request.startMdocPresentation</a>),     and finish with <code class="lang-kotlin">setResult(Activity.RESULT_OK, intent)</code>, where     intent is <a href="response.html">response</a>, or <a href="failure.html">failure</a> when the wallet won't answer.</p></li></ol><p class="paragraph">Android answers Chrome's requests over OpenID4VP (<code class="lang-kotlin">openid4vp-v1-*</code>), for mdocs as well as SD-JWT VCs: the registry's default matcher is OpenID4VP's. <code class="lang-kotlin">org-iso-mdoc</code> (ISO/IEC TS 18013-7 Annex C) is Safari's route, so iOS's, and is only answered here for a web origin.</p></div></div>
+    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">object </span><a href="index.html">DigitalCredentials</a><span class="source-link-wrapper"><span class="source-link" data-element-type="source-link">(<a href="https://github.com/IDFoundry/OID4VCgo/tree/17199df2b5005d9c9a1bac1599019fcad3c31640/mobile/android/OID4VCWallet/src/main/kotlin/dev/idfoundry/oid4vcwallet/DigitalCredentials.kt#L63">source</a>)</span></span></div><p class="paragraph">Credential Manager's side of the Digital Credentials API: what an app needs so Chrome, or another app, can ask the wallet for a credential.</p><ol><li><p class="paragraph"><a href="register.html">register</a> the wallet's credentials after every change, so the     system's chooser offers them for the requests they can answer.</p></li><li><p class="paragraph">Declare an exported activity with an intent filter for     <code class="lang-kotlin">androidx.credentials.registry.provider.action.GET_CREDENTIAL</code>.     Credential Manager starts it when the holder picks one. Being     exported, any app can start it too: <a href="request.html">request</a> answers only     Credential Manager.</p></li><li><p class="paragraph">In it, read the <a href="request.html">request</a>, show it for the holder's consent with     <a href="-request/start-presentation.html">Request.startPresentation</a> (or <a href="-request/start-mdoc-presentation.html">Request.startMdocPresentation</a>),     and finish with <code class="lang-kotlin">setResult(Activity.RESULT_OK, intent)</code>, where     intent is <a href="response.html">response</a>, or <a href="failure.html">failure</a> when the wallet won't answer.</p></li></ol><p class="paragraph">Android answers Chrome's requests over OpenID4VP (<code class="lang-kotlin">openid4vp-v1-*</code>), for mdocs as well as SD-JWT VCs: the registry's default matcher is OpenID4VP's. <code class="lang-kotlin">org-iso-mdoc</code> (ISO/IEC TS 18013-7 Annex C) is Safari's route, so iOS's, and is only answered here for a web origin.</p></div></div>
   </div>
   <div class="tabbedcontent">
     <div class="tabs-section" tabs-section="tabs-section"><button class="section-tab" data-active="" data-togglable="CONSTRUCTOR,TYPE,PROPERTY,FUNCTION">Members</button></div>
     <div class="tabs-section-body">
       <div data-togglable="TYPE">
         <h2 class="tableheader">Types</h2>
-        <div class="table"><a data-name="935599792%2FClasslikes%2F1819772712" anchor-label="RegistrationOptions" id="935599792%2FClasslikes%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+        <div class="table"><a data-name="1300218274%2FClasslikes%2F1819772712" anchor-label="CredentialManagerApp" id="1300218274%2FClasslikes%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="-credential-manager-app/index.html"><span>Credential</span><wbr></wbr><span>Manager</span><wbr></wbr><span><span>App</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1300218274%2FClasslikes%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">class </span><a href="-credential-manager-app/index.html">CredentialManagerApp</a><span class="token punctuation">(</span><span class="parameters "><span class="parameter "><span class="token keyword">val </span>packageName<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>certificateSHA256<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html">List</a><span class="token operator">&lt;</span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html">ByteArray</a><span class="token operator">&gt;</span></span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">An app trusted to start the wallet's provider activity: one that runs Credential Manager's chooser, and so vouches for the request's caller and origin.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="935599792%2FClasslikes%2F1819772712" anchor-label="RegistrationOptions" id="935599792%2FClasslikes%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
           <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
@@ -148,7 +163,22 @@
       </div>
       <div data-togglable="PROPERTY">
         <h2 class="tableheader">Properties</h2>
-        <div class="table"><a data-name="-172909258%2FProperties%2F1819772712" anchor-label="MDOC_PROTOCOL" id="-172909258%2FProperties%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+        <div class="table"><a data-name="2035019093%2FProperties%2F1819772712" anchor-label="GOOGLE_PLAY_SERVICES" id="2035019093%2FProperties%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="-g-o-o-g-l-e_-p-l-a-y_-s-e-r-v-i-c-e-s.html"><span>GOOGLE_</span><wbr></wbr><span>PLAY_</span><wbr></wbr><span>SERVICES</span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="2035019093%2FProperties%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">val </span><a href="-g-o-o-g-l-e_-p-l-a-y_-s-e-r-v-i-c-e-s.html">GOOGLE_PLAY_SERVICES</a><span class="token operator">: </span><a href="-credential-manager-app/index.html">DigitalCredentials.CredentialManagerApp</a></div><div class="brief "><p class="paragraph">Google Play services, which runs Credential Manager's chooser for the registry the wallet <a href="register.html">register</a>s with, signed with Google's release key (the one Google's privileged-browsers list names for Chrome's release build).</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-172909258%2FProperties%2F1819772712" anchor-label="MDOC_PROTOCOL" id="-172909258%2FProperties%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
           <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
@@ -212,17 +242,17 @@
               </div>
             </div>
           </div>
-<a data-name="-1579107480%2FFunctions%2F1819772712" anchor-label="request" id="-1579107480%2FFunctions%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+<a data-name="1371231434%2FFunctions%2F1819772712" anchor-label="request" id="1371231434%2FFunctions%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
           <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="request.html"><span><span>request</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1579107480%2FFunctions%2F1819772712"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1371231434%2FFunctions%2F1819772712"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">fun </span><a href="request.html"><span class="token function">request</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">intent<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/android/content/Intent.html">Intent</a><span class="token punctuation">, </span></span><span class="parameter ">privilegedBrowsers<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="-request/index.html">DigitalCredentials.Request</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">The Digital Credentials API request in <a href="request.html">intent</a>, the one Credential Manager started the activity with: its first OpenID4VP request, else its first <code class="lang-kotlin">org-iso-mdoc</code> one. Null when there's none, or when the caller's origin can't be established — a browser not on <a href="request.html">privilegedBrowsers</a> (Credential Manager's JSON allowlist of browsers trusted to report a page's origin, such as the one Google publishes for Chrome), or an app without a signing certificate. A wallet answers a null with <a href="failure.html">failure</a>.</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">fun </span><a href="request.html"><span class="token function">request</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">activity<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/android/app/Activity.html">Activity</a><span class="token punctuation">, </span></span><span class="parameter ">privilegedBrowsers<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">credentialManagerApps<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html">List</a><span class="token operator">&lt;</span><a href="-credential-manager-app/index.html">DigitalCredentials.CredentialManagerApp</a><span class="token operator">&gt;</span><span class="token operator"> = </span>listOf(GOOGLE_PLAY_SERVICES)</span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="-request/index.html">DigitalCredentials.Request</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">The Digital Credentials API request <a href="request.html">activity</a> was started with: its first OpenID4VP request, else its first <code class="lang-kotlin">org-iso-mdoc</code> one.</p></div></div></div>
                 </div>
               </div>
             </div>
