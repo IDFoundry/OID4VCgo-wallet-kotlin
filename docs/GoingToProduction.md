@@ -59,11 +59,19 @@ wallet's provider attests anything, and is for development only.
   roles to check in `revocation` and give their CAs' CRLs (PEM
   `X509 CRL` blocks) in `crls`. A role listed fails closed for any CA it
   has no current CRL from, so list only roles whose CAs publish CRLs.
-  CRLs expire at their nextUpdate: fetch fresh ones in the background
+  Every role whose roots you set must be in `revocation` or in
+  `noRevocationCheck`, which declines checking it, or the wallet isn't
+  made (`invalidInput`): decline only where something else stands in
+  for revocation, such as certificates too short-lived to be worth
+  revoking. `issuerRoots` and the mdoc roots bring two roles, `ISSUER`
+  and `STATUS` (the status lists' signers). CRLs expire at their nextUpdate: fetch fresh ones in the background
   and hand them over with `Wallet.setCRLs`, which replaces them all
   (empty text removes them) and throws `invalidInput`, keeping the old
-  lists, for anything that isn't a CRL. A `ProximityReader` takes the
-  same, for its document signers and status lists.
+  lists, for anything that isn't a CRL. A certificate pinned in the
+  roots, such as a Verifier's leaf in `verifierRoots`, is checked
+  against its CA's CRL: give that CA's certificate in `crlIssuers`, or
+  it's refused. A `ProximityReader` takes the same, for its document
+  signers and status lists.
 - As a Credential Manager provider, see the open caveat in
   [Presenting to Chrome](PresentingToChrome.md).
 

@@ -34,8 +34,9 @@ public data class WalletConfiguration(
     @SerialName("client_id") val clientID: String = "",
     /**
      * Where the issuer's pages send the holder back to: a private-use URI
-     * the app receives. Empty for a wallet that receives only
-     * pre-authorized codes.
+     * the app receives, in `reverse.domain:/path` form
+     * (`com.example.wallet:/callback`). Empty for a wallet that receives
+     * only pre-authorized codes.
      */
     @SerialName("redirect_uri") val redirectURI: String = "",
     /** PEM certificates: the trust anchors for issuers' credentials. A credential signed by a certificate that doesn't chain to them is refused. */
@@ -232,10 +233,26 @@ public data class WalletConfiguration(
     /**
      * The trust roles whose certificate chains must pass a CRL check
      * against [crls]. A role listed fails closed for any CA it has no
-     * current CRL from, until [Wallet.setCRLs] supplies one; a role not
-     * listed checks no revocation.
+     * current CRL from, until [Wallet.setCRLs] supplies one. Outside
+     * [development], each role whose roots are set must be listed here or
+     * in [noRevocationCheck], or the wallet isn't made (`invalid_input`).
      */
     @SerialName("revocation") val revocation: List<RevocationRole> = emptyList(),
+    /**
+     * PEM certificates of the CAs that issued certificates pinned in the
+     * roots (a leaf in [verifierRoots], say), for a role in [revocation]:
+     * a pinned certificate is checked against its CA's CRL, verified with
+     * the CA's certificate from here. They aren't trust anchors. Without
+     * its CA here, a pinned certificate that isn't self-signed is refused.
+     */
+    @SerialName("crl_issuers") val crlIssuers: String = "",
+    /**
+     * The trust roles that decline checking revocation, as an explicit
+     * choice: only where something else stands in for it, such as
+     * certificates too short-lived to be worth revoking. A role can't be
+     * in both this and [revocation].
+     */
+    @SerialName("no_revocation_check") val noRevocationCheck: List<RevocationRole> = emptyList(),
 ) {
     /** A trust role whose certificates can be checked for revocation. */
     @Serializable
@@ -370,7 +387,8 @@ public data class CredentialDisplay(
 public data class CredentialStatus(
     /**
      * The status as the issuer's list names it: `valid`, `invalid`, `suspended`, or "0x" and a
-     * value of the list's own. [value] reads it.
+     * value of the list's own; or `unknown`, for an mdoc naming an identifier list, which isn't
+     * checked. [value] reads it.
      */
     @SerialName("value") val rawValue: String,
     /** When it was checked. */
@@ -391,6 +409,12 @@ public data class CredentialStatus(
          * @property value The status, as "0x" and its value.
          */
         public data class Other(val value: String) : Value
+
+        /**
+         * An mdoc naming an identifier list (ISO/IEC 18013-5 §12.3.6.4), which isn't checked,
+         * and no status list saying otherwise than valid: the status isn't known.
+         */
+        public data object Unknown : Value
     }
 
     /** [rawValue], read. */
@@ -399,6 +423,7 @@ public data class CredentialStatus(
             "valid" -> Value.Valid
             "invalid" -> Value.Revoked
             "suspended" -> Value.Suspended
+            "unknown" -> Value.Unknown
             else -> Value.Other(rawValue)
         }
 }
