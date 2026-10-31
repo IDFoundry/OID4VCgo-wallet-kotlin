@@ -25,6 +25,19 @@ is a complete, working app on this library to compare against.
   `FileCredentialStore`, and the app implements `WalletProvider` (or
   passes `null` for issuers that don't ask for attestations).
   ([Getting started](GettingStarted.md))
+- [ ] The `WalletProvider` gives a fresh challenge from your backend in
+  `attestationChallenge` for instance and holder keys, implements the
+  `WalletAttestationRequest` and `KeyAttestationRequest` versions of
+  its attestations, and sends each key's `KeyEvidence.certificateChain`
+  to the backend, which verifies it as
+  [Going to production](GoingToProduction.md) lists before attesting,
+  and refuses a key without one. *Check:* the backend refuses a key
+  made without its challenge, a key from an emulator, and a key from a
+  build signed with another certificate.
+- [ ] One `Wallet`, created at launch and kept for the app's life, with
+  `Wallet.sweepOrphanedKeys` run before any issuance.
+- [ ] Each setting in [Going to production](GoingToProduction.md)'s
+  "Settings to decide" is decided and recorded.
 - [ ] Trust roots are PEM in `WalletConfiguration`, each in its own
   role: `issuerRoots`, `verifierRoots`, `mdocReaderRoots` and the rest.
   Outside development, two roles whose roots may vouch for the same
@@ -82,8 +95,14 @@ is a complete, working app on this library to compare against.
   query's claims and any `unregistered` ones, and what `preview` says
   would be disclosed, before the holder agrees. Then `respond`, or
   `decline`.
+- [ ] Respond with the selection whose `preview` the holder saw: a
+  changed selection is previewed and shown again first.
 - [ ] Open `redirectURI`, when there is one, in the browser the request
   came from.
+- [ ] `requestRefused` from `startPresentation`: open
+  `Wallet.takeRefusalRedirect()` when it returns a URL, and tell the
+  holder the request wasn't answered. Over the DC API, return a failure
+  to the page. ([Handling errors](HandlingErrors.md))
 - [ ] `deliveryUnknown` isn't retried: tell the holder to check with the
   Verifier.
 - [ ] *Check:* a Verifier outside `verifierRoots` is refused before
@@ -171,6 +190,10 @@ is a complete, working app on this library to compare against.
 - [ ] `ProximityReader(ProximityReaderConfiguration(issuerRoots = …))`,
   plus a reader key and chain with the reader-authentication EKU if
   holders should see who's asking.
+- [ ] `development` not set, with each role (`ISSUER`, `STATUS`) in
+  `revocation` (with `crls`, refreshed by `setCRLs`) or
+  `noRevocationCheck`, and `anyIssuerForAnyType` or
+  `issuerRootsByDocType` deciding which IACAs issue which document type.
 - [ ] QR: `reader.start(context, qrCode, docType, elements)` after
   `ProximityPermissions.reader` is granted.
 - [ ] NFC: reader mode on the resumed reader screen with
@@ -189,7 +212,8 @@ is a complete, working app on this library to compare against.
 
 ## 7. Before shipping
 
-- [ ] [Going to production](GoingToProduction.md) is done.
+- [ ] [Going to production](GoingToProduction.md) is done, and no
+  `ProximityReaderConfiguration` sets `development`.
 - [ ] Interop beyond your own app: test your holder against at least
   one independent reader, and your reader against an independent holder.
   The library is tested against the Multipaz test app; a reader that

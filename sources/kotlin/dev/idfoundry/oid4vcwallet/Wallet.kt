@@ -81,11 +81,14 @@ public data class WalletConfiguration(
      * Relaxes what production requires, for a wallet talking to services
      * on a development machine. Never ship an app with it set. It lets
      * issuers, Authorization Servers, Verifiers and status lists be on
-     * loopback addresses, over http there too; with [developmentRoots],
-     * makes requests through an ordinary HTTPS client, without the
-     * hardened one's refusal of private network addresses; and skips the
-     * production checks on receiving credentials: durable stores and
-     * keys, and the random source.
+     * loopback addresses, over http there too; makes requests through an
+     * ordinary HTTPS client, which reaches private network addresses,
+     * instead of the hardened one (trusting [developmentRoots] too, when
+     * set); requires no revocation choice for a trust role, so a role in
+     * neither [revocation] nor [noRevocationCheck] is checked for nothing;
+     * skips the check that different roles' roots share no anchor; and
+     * skips the production checks on receiving credentials: durable
+     * stores and keys, and the random source.
      */
     val development: Boolean = false,
     /**
@@ -253,6 +256,16 @@ public data class WalletConfiguration(
      * in both this and [revocation].
      */
     @SerialName("no_revocation_check") val noRevocationCheck: List<RevocationRole> = emptyList(),
+    /**
+     * Also accepts a document signer certificate with no extended key
+     * usage, which is refused by default for lacking the mDL document
+     * signer's (1.0.18013.5.1.2), for issuers whose document signers have
+     * none. Any certificate without one under the same IACAs, such as a
+     * revocation list signer's, can then sign mdocs the wallet accepts.
+     * It can't be set with [mdocIssuerRequireEKU], or with
+     * [issuerRequireEKU] unless [mdocIssuerRoots] is set.
+     */
+    @SerialName("accept_mdl_signer_without_eku") val acceptMDLSignerWithoutEKU: Boolean = false,
 ) {
     /** A trust role whose certificates can be checked for revocation. */
     @Serializable
@@ -570,7 +583,10 @@ public sealed interface PathElement {
  * A holder's wallet: OID4VCgo's walletflow over the app's key store,
  * credential store and Wallet Provider. Creating it makes no network
  * calls; [provider] is needed to receive credentials, not to present
- * them.
+ * them. Each key the wallet makes is made over the challenge
+ * [WalletProvider.attestationChallenge] gives for it, and reaches the
+ * provider's attestation calls with its ID and attestation chain
+ * ([KeyEvidence]).
  */
 public class Wallet(
     configuration: WalletConfiguration,
@@ -590,9 +606,12 @@ public class Wallet(
                 "the linked Go library has ABI ${OID4VC.abiVersion}, these sources ABI ${OID4VC.expectedABIVersion}: rebuild it",
             )
         }
-        val keys = KeyStoreAdapter(keyStore)
+        // Keys are made over the provider's attestation challenges, and
+        // reach it with their attestation chains.
+        val created = CreatedKeys()
+        val keys = KeyStoreAdapter(keyStore, provider, created)
         val credentials = CredentialStoreAdapter(credentialStore)
-        val wp = provider?.let(::WalletProviderAdapter)
+        val wp = provider?.let { WalletProviderAdapter(it, keyStore, created) }
         val config = json.encodeToString(WalletConfiguration.serializer(), configuration)
         handle = OID4VC.wrap { Mobile.newWallet(config, keys, credentials, wp) }
         val agreement = (keyStore as? KeyAgreement)?.let(::KeyAgreementAdapter)
@@ -1114,7 +1133,11 @@ public class Presentation internal constructor(private val handle: MobilePresent
          * disclosed as one, say). Nothing is refused for them: the holder decides.
          */
         val unregistered: List<List<PathElement>> = emptyList(),
-        /** Whether it asks for every claim, beyond a verified registration. */
+        /**
+         * Whether it names no claims, beyond a verified registration. Such a
+         * query is flagged in full, though OpenID4VP 1.0 §6.4.1 reads it as
+         * asking for no selectively disclosable claims.
+         */
         @SerialName("unregistered_all") val unregisteredAll: Boolean = false,
     )
 
@@ -1337,6 +1360,14 @@ public class InMemoryCredentialStore : CredentialStore {
 
     @Synchronized override fun delete(id: String) {
         stored.remove(id)
+    }
+
+    /** Atomic within this process, which is all an in-memory store has. */
+    @Synchronized override fun compareAndSwap(id: String, expected: ByteArray?, record: ByteArray?): ByteArray? {
+        val current = stored[id]
+        if (!current.contentEquals(expected)) return current
+        if (record == null) stored.remove(id) else put(id, record)
+        return current
     }
 }
 

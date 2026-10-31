@@ -18,24 +18,32 @@ library. Your app owns the keys, the storage and the UI:
   from Android 11 (API 30); below it, the app authenticates the holder
   itself. [What each API level guarantees](https://github.com/IDFoundry/OID4VCgo/blob/main/mobile/README.md#what-each-platform-supports).
 - **Storage:** `FileCredentialStore` encrypts each record under a key
-  that works only while the device is unlocked, out of backups.
+  that works only while the device is unlocked, out of backups. Its
+  writes lock a file in its directory, so the app's processes can share
+  one.
 - **Wallet Provider:** you implement `WalletProvider`, which attests the
   wallet, for issuers that ask for attestations, as HAIP issuers do; pass
-  `null` for issuers that don't. Issuance follows each issuer's
+  `null` for issuers that don't. It gives a challenge for each key the
+  wallet makes (`attestationChallenge`), and receives each key with its
+  Android Key Attestation chain (`KeyEvidence`): your backend verifies
+  the chain — Google's root, your challenge, StrongBox or the TEE, your
+  app's package and signing certificate — before attesting the key, as
+  [Going to production](docs/GoingToProduction.md#the-wallet-provider)
+  says. Issuance follows each issuer's
   metadata, or with `issuanceProfile = IssuanceProfile.HAIP` refuses
   issuers outside HAIP.
 
 ## Install
 
-Download `oid4vcwallet-0.19.0.aar` from [the release](https://github.com/IDFoundry/OID4VCgo-wallet-kotlin/releases/tag/0.19.0)
-(and `oid4vcwallet-0.19.0-sources.jar`, to browse its sources in
+Download `oid4vcwallet-0.20.0.aar` from [the release](https://github.com/IDFoundry/OID4VCgo-wallet-kotlin/releases/tag/0.20.0)
+(and `oid4vcwallet-0.20.0-sources.jar`, to browse its sources in
 Android Studio) into your app module's `libs/`, and add it with the
 libraries it uses:
 
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation(files("libs/oid4vcwallet-0.19.0.aar"))
+    implementation(files("libs/oid4vcwallet-0.20.0.aar"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
     implementation("androidx.annotation:annotation:1.7.0")
@@ -50,7 +58,7 @@ dependencies {
 
 Check the download against the release's `SHA256SUMS`
 (`sha256sum -c SHA256SUMS`), and its provenance with the GitHub CLI:
-`gh attestation verify oid4vcwallet-0.19.0.aar --repo IDFoundry/OID4VCgo`.
+`gh attestation verify oid4vcwallet-0.20.0.aar --repo IDFoundry/OID4VCgo`.
 
 In-person presentation over Bluetooth needs Bluetooth permissions,
 which the library's manifest adds to your app's: request
@@ -75,7 +83,7 @@ It's compiled for Kotlin 2.2 and later.
 - [The integration checklist](docs/IntegrationChecklist.md): every step
   and rule in order, each with how to check it.
 - What's new: each [release](https://github.com/IDFoundry/OID4VCgo-wallet-kotlin/releases)'s notes.
-- [The API reference](https://idfoundry.github.io/OID4VCgo-wallet-kotlin/0.19.0/), for this
+- [The API reference](https://idfoundry.github.io/OID4VCgo-wallet-kotlin/0.20.0/), for this
   release.
 - [The Android library's sources](https://github.com/IDFoundry/OID4VCgo/tree/main/mobile/android/OID4VCWallet),
   mirrored in `sources/`.

@@ -9,7 +9,10 @@ Every failure from the wallet is a `WalletException`:
 - `protocolError`: the issuer's, Authorization Server's or Verifier's
   own OAuth error code, when it gave one, such as `invalid_grant` for a
   wrong PIN;
-- `isRetryable`: whether trying the same step again may succeed;
+- `isRetryable`: whether trying the same step again may succeed. Not
+  with input the step used up: a redirect given to
+  `completeAuthorization` is spent whatever happened, so begin the
+  authorization again;
 - `description`: a sentence fit to show the holder;
 - `message`: detail for logs. It never carries personal data, a remote
   party's own description, or a URL's path or query, so it's safe to
@@ -56,6 +59,7 @@ fun describe(error: Throwable): Pair<String, Boolean> = when (error) {
 | `credentialDenied` | The issuer refused a deferred credential | Tell the holder |
 | `untrustedVerifier` | The Verifier or reader isn't one the wallet trusts: nothing was shown | Tell the holder |
 | `tlsPin` | A pinned host's certificate matched none of its `tlsPins`: an interception, or keys changed beyond the pins. Nothing was sent | Don't retry; tell the holder to try another network, or ship new pins |
+| `requestRefused` | The wallet refused a Verifier's request it must not answer (`transaction_data` it doesn't support, say) and told the Verifier; `protocolError` is the code it sent. Nothing was shown | From a link, open `Wallet.takeRefusalRedirect()` if it returns one; over the DC API, return a failure to the page. Tell the holder the request wasn't answered |
 | `noMatchingCredential` | No held credential answers the request | Decline |
 | `invalidSelection` | The selection doesn't answer the request | Choose again |
 | `deliveryUnknown` | A response may or may not have reached the Verifier: it isn't sent again | Ask the holder to check with the Verifier |
@@ -67,7 +71,7 @@ fun describe(error: Throwable): Pair<String, Boolean> = when (error) {
 | `wrongStep` | The session isn't at that step | A bug in the app's flow |
 | `cancelled` | The call was cancelled (a cancelled coroutine ends with its own `CancellationException` instead) | Nothing |
 | `invalidInput` | A link, PIN or configuration isn't valid | Tell the holder, or fix the configuration |
-| `platform` | The key store, credential store or Wallet Provider failed | Check the app's implementation |
+| `platform` | The key store, credential store or Wallet Provider failed: refused to attest a key, say | Check the app's implementation |
 | `internal` | Unexpected | Log it |
 
 ## Cancel

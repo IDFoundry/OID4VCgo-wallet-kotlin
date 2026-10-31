@@ -121,16 +121,27 @@ decide.
 A `ProximityReader` needs no `Wallet`: give it the IACAs whose mdocs it
 accepts, and, to sign its requests so holders see who is asking, a key
 in a `KeyStore` and its certificate chain, with the reader
-authentication extended key usage (`ProximityReaderConfiguration`).
-`start` takes the holder's QR code and what to ask for.
+authentication extended key usage (`ProximityReaderConfiguration`). The
+reader is a production one: it refuses (`invalid_input`) a
+configuration that leaves a decision open: which IACAs issue which
+document types (`anyIssuerForAnyType`, or `issuerRootsByDocType`), and
+each role's revocation (`revocation` with `crls`, or
+`noRevocationCheck` to decline). `development` relaxes this, for trying
+out a development issuer's documents; never ship an app with it set. `start` takes the holder's QR code and what to ask for.
 
 ```kotlin
 /**
  * Reads an mDL's name and portrait from the holder whose QR code was scanned. Returns the verified
  * mdoc, or null if the holder declined or the mdoc isn't known to be unrevoked.
  */
-suspend fun readInPerson(context: Context, qrCode: String, issuerRoots: String): VerifiedMdoc? {
-    val reader = ProximityReader(ProximityReaderConfiguration(issuerRoots = issuerRoots))
+suspend fun readInPerson(context: Context, qrCode: String, issuerRoots: String, crls: String): VerifiedMdoc? {
+    val reader = ProximityReader(
+        ProximityReaderConfiguration(
+            issuerRoots = issuerRoots, crls = crls,
+            revocation = listOf(ProximityReaderConfiguration.RevocationRole.ISSUER, ProximityReaderConfiguration.RevocationRole.STATUS),
+            anyIssuerForAnyType = true,
+        ),
+    )
     val session = reader.start(
         context, qrCode, "org.iso.18013.5.1.mDL",
         mapOf("org.iso.18013.5.1" to listOf("given_name", "family_name", "portrait")),
@@ -374,13 +385,11 @@ there is no automatic switch to a different static transcript. Its incomplete
 tap leaves QR available, but cannot establish NFC retrieval. To use such a
 reader over NFC, close this owner and create a static presentation.
 
-ISO/IEC 18013-5:2021's published sample, §6.3.2.3, permits a holder to offer
-either handover method or both; it requires both on the reader. See the
-[ISO-authored sample](https://standards.theiteh.com/catalog/standards/iso/8b349f37-4a4d-4379-9feb-0061079dba81/iso-iec-18013-5-2021)
-and NFC Forum's [CH overview](https://nfc-forum.org/build/specifications/connection-handover-technical-specification/).
-These support explicit mode selection, not a mandatory silent fallback.
-Detailed licensed review of §8.2.2.1, CH 1.5 and TNEP 1.0 hasn't been
-done; public overviews do not replace those normative texts.
+ISO/IEC 18013-5:2021 §6.3.2.3 permits a holder to offer either handover
+method or both, and requires both on the reader; NFC Forum's
+[Connection Handover overview](https://nfc-forum.org/build/specifications/connection-handover-technical-specification/)
+describes them. Choose the mode explicitly: there is no silent fallback
+from one to the other.
 
 For opt-in Android lifecycle diagnostics:
 

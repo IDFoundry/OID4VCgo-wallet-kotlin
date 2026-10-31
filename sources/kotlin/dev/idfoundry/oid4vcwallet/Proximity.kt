@@ -346,6 +346,9 @@ public class ProximityPresentation internal constructor(
             _state.compareAndSet(State.Responding, request)
             throw e
         }
+        // Cancelled once Go's respond had returned (cancelled before, it
+        // gives nothing to send): the response stays here.
+        if (ending != null) throw WalletException(WalletException.Code.cancelled, null, "the session was cancelled")
         try {
             transport.send(answer.send)
         } catch (e: ProximityTransportException) {
@@ -569,6 +572,35 @@ public data class ProximityReaderConfiguration(
      * roots, for a role in [revocation], as [WalletConfiguration.crlIssuers].
      */
     @SerialName("crl_issuers") val crlIssuers: String = "",
+    /**
+     * Also accepts a document signer certificate with no extended key
+     * usage, which is refused by default for lacking the mDL document
+     * signer's, for issuers whose document signers have none. It can't be
+     * set with [requireMDLSignerEKU].
+     */
+    @SerialName("accept_mdl_signer_without_eku") val acceptMDLSignerWithoutEKU: Boolean = false,
+    /**
+     * The roles that decline checking revocation, for where something
+     * else stands in for it. Outside [development], each role must be in
+     * [revocation] or here; a role can't be in both.
+     */
+    @SerialName("no_revocation_check") val noRevocationCheck: List<RevocationRole> = emptyList(),
+    /**
+     * Declares that every IACA in [issuerRoots] may issue every document
+     * type the reader asks for. Outside [development], [issuerRoots] needs
+     * it; otherwise name each type's IACAs in [issuerRootsByDocType].
+     */
+    @SerialName("any_issuer_for_any_type") val anyIssuerForAnyType: Boolean = false,
+    /**
+     * Relaxes what production requires, for a reader trying out a
+     * development issuer's documents. Never ship an app with it set.
+     * Without it, [ProximityReader] requires a production reader's
+     * decisions, throwing `invalid_input` otherwise: each role in
+     * [revocation] or [noRevocationCheck], and [anyIssuerForAnyType] with
+     * [issuerRoots]. With it, a role in neither checks no revocation, and
+     * any IACA in [issuerRoots] may issue any document type.
+     */
+    @SerialName("development") val development: Boolean = false,
 ) {
     /** A reader's trust role whose certificates can be checked for revocation. */
     @Serializable
