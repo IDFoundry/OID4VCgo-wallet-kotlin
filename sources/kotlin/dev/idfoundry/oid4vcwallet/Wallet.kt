@@ -114,7 +114,7 @@ public data class WalletConfiguration(
     /**
      * Asks Authorization Servers for a refresh token, so
      * [Wallet.refreshCredential] can later replace a credential's copies
-     * without the holder. The server must allow the wallet the
+     * without the holder signing in. The server must allow the wallet the
      * `offline_access` scope, or the authorization fails.
      */
     @SerialName("request_refresh") val requestRefresh: Boolean = false,
@@ -400,8 +400,8 @@ public data class CredentialDisplay(
 public data class CredentialStatus(
     /**
      * The status as the issuer's list names it: `valid`, `invalid`, `suspended`, or "0x" and a
-     * value of the list's own; or `unknown`, for an mdoc naming an identifier list, which isn't
-     * checked. [value] reads it.
+     * value of the list's own; or `unknown`, for a status naming no mechanism the wallet knows.
+     * [value] reads it.
      */
     @SerialName("value") val rawValue: String,
     /** When it was checked. */
@@ -424,8 +424,9 @@ public data class CredentialStatus(
         public data class Other(val value: String) : Value
 
         /**
-         * An mdoc naming an identifier list (ISO/IEC 18013-5 §12.3.6.4), which isn't checked,
-         * and no status list saying otherwise than valid: the status isn't known.
+         * A status naming no mechanism the wallet knows, and no list saying otherwise than
+         * valid: the status isn't known. Before OID4VCWallet 0.22.0, also an mdoc naming an
+         * identifier list (ISO/IEC 18013-5 §12.3.6.4), which is now checked.
          */
         public data object Unknown : Value
     }
@@ -668,8 +669,11 @@ public class Wallet(
 
     /**
      * Replaces a `refreshable` credential's copies with a fresh batch,
-     * each bound to a new attested key, without the holder (OpenID4VCI
-     * 1.0 §13.5). Use it when `copiesLeft` runs low. Throws
+     * each bound to a new holder key, without the holder signing in
+     * (OpenID4VCI 1.0 §13.5). The new holder keys sign the Credential
+     * Request's proof, so with
+     * [AndroidKeystoreKeyStore.Options.holderUserAuthentication] on it
+     * asks the holder. Use it when `copiesLeft` runs low. Throws
      * [WalletException.Code.reissueRequired] when it can't be refreshed:
      * receive it again from a new offer.
      */
