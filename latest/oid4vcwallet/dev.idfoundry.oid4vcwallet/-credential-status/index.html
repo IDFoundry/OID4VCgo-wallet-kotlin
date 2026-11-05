@@ -107,24 +107,24 @@
   <div class="breadcrumbs"><a href="../../../index.html">oid4vcwallet</a><span class="delimiter">/</span><a href="../index.html">dev.idfoundry.oid4vcwallet</a><span class="delimiter">/</span><span class="current">CredentialStatus</span></div>
   <div class="cover ">
     <h1 class="cover"><span>Credential</span><wbr></wbr><span><span>Status</span></span></h1>
-    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><div class="block"><div class="block"><span class="token annotation builtin">@</span><span data-unresolved-link="kotlinx.serialization/Serializable///PointingToDeclaration/"><span class="token annotation builtin">Serializable</span></span></div></div><span class="token keyword">data </span><span class="token keyword">class </span><a href="index.html">CredentialStatus</a><span class="token punctuation">(</span><span class="parameters "><span class="parameter "><span class="token keyword">val </span>rawValue<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>checkedAt<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/java/time/Instant.html">Instant</a></span></span><span class="token punctuation">)</span><span class="source-link-wrapper"><span class="source-link" data-element-type="source-link">(<a href="https://github.com/IDFoundry/OID4VCgo/tree/eb64e5f0dc878da3277bd5f2e852297374680673/mobile/android/OID4VCWallet/src/main/kotlin/dev/idfoundry/oid4vcwallet/Wallet.kt#L415">source</a>)</span></span></div><p class="paragraph">A credential's revocation status in the issuer's status list, as last checked (<a href="../-wallet/check-status.html">Wallet.checkStatus</a>).</p></div></div>
+    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><div class="block"><div class="block"><span class="token annotation builtin">@</span><span data-unresolved-link="kotlinx.serialization/Serializable///PointingToDeclaration/"><span class="token annotation builtin">Serializable</span></span></div></div><span class="token keyword">data </span><span class="token keyword">class </span><a href="index.html">CredentialStatus</a><span class="token punctuation">(</span><span class="parameters "><span class="parameter "><span class="token keyword">val </span>rawValue<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>checkedAt<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/java/time/Instant.html">Instant</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>rawReason<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token operator"> = </span>null</span></span><span class="token punctuation">)</span><span class="source-link-wrapper"><span class="source-link" data-element-type="source-link">(<a href="https://github.com/IDFoundry/OID4VCgo/tree/67e00a76ed7e74e14594cd355cb3400313206e72/mobile/android/OID4VCWallet/src/main/kotlin/dev/idfoundry/oid4vcwallet/Wallet.kt#L417">source</a>)</span></span></div><p class="paragraph">A credential's revocation status, as last checked (<a href="../-wallet/check-status.html">Wallet.checkStatus</a>): in the issuer's status list, and, from OID4VCWallet 0.27.0, its issuer's certificate chain against the revocation lists held then.</p></div></div>
   </div>
   <div class="tabbedcontent">
     <div class="tabs-section" tabs-section="tabs-section"><button class="section-tab" data-active="" data-togglable="CONSTRUCTOR,TYPE,PROPERTY,FUNCTION">Members</button></div>
     <div class="tabs-section-body">
       <div data-togglable="CONSTRUCTOR">
         <h2 class="tableheader">Constructors</h2>
-        <div class="table"><a data-name="-1899205881%2FConstructors%2F1819772712" anchor-label="CredentialStatus" id="-1899205881%2FConstructors%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+        <div class="table"><a data-name="1775048887%2FConstructors%2F1819772712" anchor-label="CredentialStatus" id="1775048887%2FConstructors%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
           <div class="table-row table-row_content" data-togglable="CONSTRUCTOR" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="-credential-status.html"><span>Credential</span><wbr></wbr><span><span>Status</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1899205881%2FConstructors%2F1819772712"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1775048887%2FConstructors%2F1819772712"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">constructor</span><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">rawValue<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">checkedAt<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/java/time/Instant.html">Instant</a></span></span><span class="token punctuation">)</span></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">constructor</span><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">rawValue<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">checkedAt<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/java/time/Instant.html">Instant</a><span class="token punctuation">, </span></span><span class="parameter ">rawReason<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token operator"> = </span>null</span></span><span class="token punctuation">)</span></div></div></div>
                 </div>
               </div>
             </div>
@@ -133,7 +133,22 @@
       </div>
       <div data-togglable="TYPE">
         <h2 class="tableheader">Types</h2>
-        <div class="table"><a data-name="-1149327905%2FClasslikes%2F1819772712" anchor-label="Value" id="-1149327905%2FClasslikes%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+        <div class="table"><a data-name="-362084274%2FClasslikes%2F1819772712" anchor-label="Reason" id="-362084274%2FClasslikes%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="-reason/index.html"><span><span>Reason</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-362084274%2FClasslikes%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">sealed </span><span class="token keyword">interface </span><a href="-reason/index.html">Reason</a></div><div class="brief "><p class="paragraph">Why a status is what it is.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-1149327905%2FClasslikes%2F1819772712" anchor-label="Value" id="-1149327905%2FClasslikes%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
           <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
@@ -167,6 +182,21 @@
               </div>
             </div>
           </div>
+<a data-name="-209330991%2FProperties%2F1819772712" anchor-label="rawReason" id="-209330991%2FProperties%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="raw-reason.html"><span>raw</span><wbr></wbr><span><span>Reason</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-209330991%2FProperties%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><div class="block"><div class="block"><span class="token annotation builtin">@</span><span data-unresolved-link="kotlinx.serialization/SerialName///PointingToDeclaration/"><span class="token annotation builtin">SerialName</span></span><span class="token punctuation">(</span><span>value<span class="token operator"> = </span><span class="breakable-word"><span class="token string">&quot;reason&quot;</span></span></span><wbr></wbr><span class="token punctuation">)</span></div></div><span class="token keyword">val </span><a href="raw-reason.html">rawReason</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">Why the status is what it is, as the Go side names it, such as <code class="lang-kotlin">issuer_certificate_revoked</code>; null for <code class="lang-kotlin">valid</code>, and for a status recorded before OID4VCWallet 0.27.0. <a href="reason.html">reason</a> reads it.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
 <a data-name="1434857876%2FProperties%2F1819772712" anchor-label="rawValue" id="1434857876%2FProperties%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
           <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
             <div class="main-subrow keyValue ">
@@ -182,6 +212,21 @@
               </div>
             </div>
           </div>
+<a data-name="1067556313%2FProperties%2F1819772712" anchor-label="reason" id="1067556313%2FProperties%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="reason.html"><span><span>reason</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1067556313%2FProperties%2F1819772712"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">val </span><a href="reason.html">reason</a><span class="token operator">: </span><a href="-reason/index.html">CredentialStatus.Reason</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph"><span data-unresolved-link="dev.idfoundry.oid4vcwallet/CredentialStatus//#kotlin.String#java.time.Instant#kotlin.String?/PointingToCallableParameters(2)/">rawReason</span>, read: null when there's none.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
 <a data-name="367669132%2FProperties%2F1819772712" anchor-label="value" id="367669132%2FProperties%2F1819772712" data-filterable-set=":OID4VCWallet/release"></a>
           <div class="table-row table-row_content" data-filterable-current=":OID4VCWallet/release" data-filterable-set=":OID4VCWallet/release">
             <div class="main-subrow keyValue ">
@@ -192,7 +237,7 @@
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">val </span><a href="value.html">value</a><span class="token operator">: </span><a href="-value/index.html">CredentialStatus.Value</a></div><div class="brief "><p class="paragraph"><span data-unresolved-link="dev.idfoundry.oid4vcwallet/CredentialStatus//#kotlin.String#java.time.Instant/PointingToCallableParameters(0)/">rawValue</span>, read.</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":OID4VCWallet/release"><div class="symbol monospace"><span class="token keyword">val </span><a href="value.html">value</a><span class="token operator">: </span><a href="-value/index.html">CredentialStatus.Value</a></div><div class="brief "><p class="paragraph"><span data-unresolved-link="dev.idfoundry.oid4vcwallet/CredentialStatus//#kotlin.String#java.time.Instant#kotlin.String?/PointingToCallableParameters(0)/">rawValue</span>, read.</p></div></div></div>
                 </div>
               </div>
             </div>
