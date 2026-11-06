@@ -127,6 +127,17 @@ public interface CredentialStore {
     /** Every record. */
     public fun records(): List<ByteArray>
 
+    /**
+     * The records whose IDs [idFilter] accepts. The wallet lists one kind
+     * of record at a time this way — its credentials, or the pending
+     * deferred credentials, authorizations or refresh grants it keeps
+     * beside them — so a store that decrypts each record, as
+     * [FileCredentialStore] does, opens only those. It may return others
+     * too: the wallet tells records apart. By default it returns
+     * [records].
+     */
+    public fun records(idFilter: (String) -> Boolean): List<ByteArray> = records()
+
     /** Deletes the record; deleting one that doesn't exist isn't an error. */
     public fun delete(id: String)
 
@@ -189,11 +200,19 @@ public class WalletAttestationRequest(
 /**
  * What the wallet asks its Wallet Provider for a Key Attestation.
  *
+ * @property instanceKey The instance key of the issuance the keys are
+ *   for, which a [WalletAttestationRequest] already sent with its
+ *   evidence: the wallet always asks for a Wallet Attestation of it
+ *   first. A provider that records its instance keys gives the Key
+ *   Attestation that key's status (the Wallet Provider protocol's
+ *   `instance_key`), so suspending or revoking the installation
+ *   withdraws it too.
  * @property keys The holder keys to attest together, each with its
  *   evidence.
  * @property nonce The Credential Issuer's nonce the attestation carries.
  */
 public class KeyAttestationRequest(
+    public val instanceKey: KeyEvidence,
     public val keys: List<KeyEvidence>,
     public val nonce: String,
 )
@@ -222,11 +241,12 @@ public interface WalletProvider {
         throw StoreException("the WalletProvider implements no walletAttestation")
 
     /**
-     * A Key Attestation over [keys], carrying the issuer's [nonce]. The
-     * default throws: implement this or the [KeyAttestationRequest]
-     * version.
+     * A Key Attestation over [keys], carrying the issuer's [nonce], for
+     * the issuance whose instance key is [instanceKey]
+     * ([KeyAttestationRequest.instanceKey]). The default throws:
+     * implement this or the [KeyAttestationRequest] version.
      */
-    public suspend fun keyAttestation(keys: List<ByteArray>, nonce: String): String =
+    public suspend fun keyAttestation(instanceKey: ByteArray, keys: List<ByteArray>, nonce: String): String =
         throw StoreException("the WalletProvider implements no keyAttestation")
 
     /**
@@ -255,10 +275,10 @@ public interface WalletProvider {
 
     /**
      * A Key Attestation for [request]. The default calls
-     * [keyAttestation] with the keys' JWKs alone.
+     * [keyAttestation] with the instance key's and the keys' JWKs alone.
      */
     public suspend fun keyAttestation(request: KeyAttestationRequest): String =
-        keyAttestation(request.keys.map { it.jwk }, request.nonce)
+        keyAttestation(request.instanceKey.jwk, request.keys.map { it.jwk }, request.nonce)
 }
 
 // Adapters to gomobile's interfaces.
@@ -347,10 +367,18 @@ internal class CredentialStoreAdapter(private val store: CredentialStore) : Mobi
 
     override fun get(id: String): ByteArray = store.record(id) ?: ByteArray(0)
 
-    override fun list(): ByteArray {
+    override fun list(): ByteArray = jsonArray(store.records())
+
+    // prefixes is a comma-separated list; empty selects every ID.
+    override fun listPrefixed(prefixes: String, excluding: Boolean): ByteArray {
+        val ps = prefixes.split(',').filter { it.isNotEmpty() }
+        return jsonArray(store.records { id -> ps.any { id.startsWith(it) } != excluding })
+    }
+
+    private fun jsonArray(records: List<ByteArray>): ByteArray {
         val out = java.io.ByteArrayOutputStream()
         out.write('['.code)
-        store.records().forEachIndexed { i, r ->
+        records.forEachIndexed { i, r ->
             if (i > 0) out.write(','.code)
             out.write(r)
         }
@@ -389,13 +417,13 @@ internal class WalletProviderAdapter(
         return waitForProvider { provider.walletAttestation(request) }.toByteArray()
     }
 
-    override fun keyAttestation(keysJWK: ByteArray, nonce: String): ByteArray {
+    override fun keyAttestation(instanceKeyJWK: ByteArray, keysJWK: ByteArray, nonce: String): ByteArray {
         val keys = try {
             json.parseToJsonElement(keysJWK.decodeToString()) as JsonArray
         } catch (e: Exception) {
             throw StoreException("the keys to attest aren't a JSON array")
         }
-        val request = KeyAttestationRequest(keys.map { evidence(it.toString().toByteArray()) }, nonce)
+        val request = KeyAttestationRequest(evidence(instanceKeyJWK), keys.map { evidence(it.toString().toByteArray()) }, nonce)
         return waitForProvider { provider.keyAttestation(request) }.toByteArray()
     }
 
@@ -436,4 +464,6 @@ internal fun <T> waitForProvider(body: suspend () -> T): T =
     }
 
 /** A store's or provider's own failure. */
-public open class StoreException(message: String) : Exception(message)
+public open class StoreException(message: String, cause: Throwable?) : Exception(message, cause) {
+    public constructor(message: String) : this(message, null)
+}

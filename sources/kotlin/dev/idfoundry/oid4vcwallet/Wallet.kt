@@ -282,6 +282,24 @@ public data class WalletConfiguration(
     @SerialName("crl_distribution_points_from_roots") val crlDistributionPointsFromRoots: Boolean = false,
     /** Refuses plain `http` distribution points, and leaves them out of [crlDistributionPointsFromRoots]. */
     @SerialName("crl_require_https") val crlRequireHTTPS: Boolean = false,
+    /** The largest status list [Wallet.checkStatus] reads, in bytes; 0 means 1 MiB. Raise it for issuers whose lists are larger. */
+    @SerialName("status_max_bytes") val statusMaxBytes: Int = 0,
+    /** The largest mdoc identifier list [Wallet.checkStatus] reads, in bytes; 0 means 4 MiB. */
+    @SerialName("identifier_list_max_bytes") val identifierListMaxBytes: Int = 0,
+    /**
+     * How long [Wallet.checkStatus] uses a status or identifier list it fetched before
+     * revalidating it, in seconds: 0 means 5 minutes, at most a day, and never past the
+     * list's own `ttl` or `exp`. Longer means fewer requests, and a revocation seen that much later.
+     */
+    @SerialName("status_cache_max_age_seconds") val statusCacheMaxAgeSeconds: Long = 0,
+    /**
+     * An absolute path, the app's own — under `context.cacheDir`, say — where
+     * [Wallet.checkStatus] keeps the lists it verified across launches: a launch then asks
+     * each list's server whether the list it kept is current, a `304 Not Modified` rather
+     * than the list, and never uses one the server hasn't confirmed. Empty keeps them in
+     * memory only.
+     */
+    @SerialName("status_cache_dir") val statusCacheDir: String = "",
 ) {
     /** A trust role whose certificates can be checked for revocation. */
     @Serializable
@@ -1401,8 +1419,10 @@ public class MdocPresentation internal constructor(private val handle: MobileMdo
     public data class Response(
         /** The CBOR EncryptedResponse, to hand back to the platform. */
         @Serializable(Base64Serializer::class) val response: ByteArray,
-        /** Whether the copy presented had been seen by another Verifier. */
+        /** Whether a copy presented had been seen by another Verifier: for several documents, whether any was. */
         val linkable: Boolean = false,
+        /** The credentials presented with such a copy, by ID. */
+        @SerialName("linkable_credentials") val linkableCredentials: List<String> = emptyList(),
     ) {
         /**
          * The response as the data member of a platform's Digital
@@ -1419,18 +1439,54 @@ public class MdocPresentation internal constructor(private val handle: MobileMdo
     public val request: Request = decode(handle.request())
 
     /**
+     * One requested document to answer.
+     *
+     * @property document Its number among the request's documents.
+     * @property credentialID The held mdoc that answers it.
+     * @property elements The elements to disclose, each one that document requested.
+     */
+    public data class Answer(val document: Int, val credentialID: String, val elements: List<Element>)
+
+    /**
      * Presents the held mdoc [credentialID] for document number
      * [document], disclosing exactly [elements], each one it requested.
      * The holder key signs now, so a key store requiring the holder
-     * prompts.
+     * prompts. It is [respond] with one answer.
      */
-    public suspend fun respond(document: Int, credentialID: String, elements: List<Element>): Response {
-        val pairs = json.encodeToString(ListSerializer(ListSerializer(String.serializer())), elements.map { listOf(it.namespace, it.identifier) })
-        return decode(OID4VC.cancellable { op -> handle.respond(op, document.toLong(), credentialID, pairs) })
+    public suspend fun respond(document: Int, credentialID: String, elements: List<Element>): Response =
+        respond(listOf(Answer(document, credentialID, elements)))
+
+    /**
+     * Presents several of the request's documents in one
+     * EncryptedResponse, each of [answers] as the one-document [respond]
+     * presents one. A document left out isn't in the response. No
+     * document may be answered twice, nor one credential answer two.
+     * Each holder key signs now, in the request's order, so each key
+     * store requiring the holder prompts in turn; on a
+     * [WalletException] — one prompt cancelled, say — nothing is
+     * returned, and the request can be answered again.
+     */
+    public suspend fun respond(answers: List<Answer>): Response {
+        val answersJSON = answersJSON(answers)
+        return decode(OID4VC.cancellable { op -> handle.respondDocuments(op, answersJSON) })
     }
 
     /** Origins, as the platform reports them. */
     public companion object {
+        /** [answers] as the gomobile layer takes them: `[{"document", "credential_id", "elements"}]`. */
+        internal fun answersJSON(answers: List<Answer>): String =
+            json.encodeToString(
+                ListSerializer(AnswerJSON.serializer()),
+                answers.map { a -> AnswerJSON(a.document, a.credentialID, a.elements.map { listOf(it.namespace, it.identifier) }) },
+            )
+
+        @Serializable
+        private data class AnswerJSON(
+            val document: Int,
+            @SerialName("credential_id") val credentialID: String,
+            val elements: List<List<String>>,
+        )
+
         /**
          * [url]'s web origin, as a browser serializes it and the session
          * transcript binds it: `scheme://host`, with the port only when it
@@ -1462,6 +1518,9 @@ public class InMemoryCredentialStore : CredentialStore {
     @Synchronized override fun record(id: String): ByteArray? = stored[id]
 
     @Synchronized override fun records(): List<ByteArray> = stored.values.toList()
+
+    @Synchronized override fun records(idFilter: (String) -> Boolean): List<ByteArray> =
+        stored.filterKeys(idFilter).values.toList()
 
     @Synchronized override fun delete(id: String) {
         stored.remove(id)

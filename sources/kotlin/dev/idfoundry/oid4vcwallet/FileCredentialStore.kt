@@ -1,8 +1,10 @@
 package dev.idfoundry.oid4vcwallet
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyInfo
 import android.security.keystore.KeyProperties
 import android.util.Log
 import androidx.annotation.VisibleForTesting
@@ -14,14 +16,17 @@ import java.io.IOException
 import java.io.RandomAccessFile
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import java.security.GeneralSecurityException
 import java.security.KeyStore as JavaKeyStore
 import java.security.MessageDigest
+import java.security.ProviderException
 import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
+import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import kotlin.concurrent.withLock
@@ -31,7 +36,8 @@ import kotlin.concurrent.withLock
  * directory of the app's (`noBackupFilesDir/credentials`, by default,
  * which no backup or device transfer copies). Each record is encrypted
  * (AES-256-GCM, its ID as associated data) under a key of its own,
- * wrapped by an Android Keystore key
+ * wrapped by an Android Keystore key — in the TEE, or StrongBox where
+ * [Options.strongBox] asks for it —
  * that, by default, works only while the device is unlocked — iOS's
  * complete file protection. A credential is useless without its holder
  * key, which is in this device's Keystore and can't be restored
@@ -78,7 +84,10 @@ public class FileCredentialStore(
          * Whenever the device has been unlocked once since it started:
          * file-based encryption's credential-encrypted storage alone, as
          * iOS's "until first user authentication". For an app that must
-         * read credentials while locked.
+         * read credentials while locked. The store also holds the record
+         * keys it has unwrapped, in memory, so a record read again needs
+         * no Keystore call: under [WHEN_UNLOCKED] it holds none, as one
+         * held would open a record while the device is locked.
          */
         AFTER_FIRST_UNLOCK,
     }
@@ -97,6 +106,21 @@ public class FileCredentialStore(
          * protection needs another alias.
          */
         val keyAlias: String = FileCredentialStore.DEFAULT_KEY_ALIAS,
+        /**
+         * Where the key is made: by default ([AndroidKeystoreKeyStore.StrongBox.OFF])
+         * the TEE. [AndroidKeystoreKeyStore.StrongBox.PREFERRED] and
+         * [AndroidKeystoreKeyStore.StrongBox.REQUIRED] make it in StrongBox,
+         * with the fallbacks the wallet's keys have
+         * ([AndroidKeystoreKeyStore.Options.strongBox]). StrongBox is slow, and
+         * the key unwraps a record's own key on every read and wraps one on
+         * every write (twice per [put], which reads the record back). On a
+         * Pixel 8a, listing 26 records took about 1.1 s in StrongBox and
+         * 0.3 s in the TEE; on a Xiaomi 14, each StrongBox operation took
+         * about 0.9 s.
+         * It applies when the key is made: an existing key stays where it is
+         * ([keySecurityLevel] says where).
+         */
+        val strongBox: AndroidKeystoreKeyStore.StrongBox = AndroidKeystoreKeyStore.StrongBox.OFF,
     )
 
     /** This process's lock on the directory, shared by every store on it. */
@@ -121,8 +145,11 @@ public class FileCredentialStore(
         return open(id, sealed)
     }
 
-    override fun records(): List<ByteArray> =
-        sealedRecords().mapNotNull { (id, sealed) ->
+    override fun records(): List<ByteArray> = records { true }
+
+    /** The records whose IDs [idFilter] accepts, as [records]: the others aren't read or decrypted. */
+    override fun records(idFilter: (String) -> Boolean): List<ByteArray> =
+        sealedRecords(idFilter).mapNotNull { (id, sealed) ->
             try {
                 open(id, sealed)
             } catch (e: StoreException) {
@@ -159,14 +186,15 @@ public class FileCredentialStore(
             }
         }
 
-    private fun sealedRecords(): List<Pair<String, ByteArray>> =
-        directory.listFiles { f -> f.isFile && f.name.endsWith(SUFFIX) && !f.name.startsWith(".") }.orEmpty()
+    private fun sealedRecords(idFilter: (String) -> Boolean = { true }): List<Pair<String, ByteArray>> =
+        directory.listFiles { f -> f.isFile && f.name.endsWith(SUFFIX) && !f.name.startsWith(".") && idFilter(f.name.removeSuffix(SUFFIX)) }.orEmpty()
             .sortedBy { it.name }
             .mapNotNull { f -> read(f)?.let { f.name.removeSuffix(SUFFIX) to it } } // one deleted meanwhile isn't listed
 
     override fun delete(id: String) {
         val f = file(id)
         withStoreLock { remove(id, f) }
+        forgetRecordKey(id)
     }
 
     override fun compareAndSwap(id: String, expected: ByteArray?, record: ByteArray?): ByteArray? {
@@ -177,7 +205,12 @@ public class FileCredentialStore(
         return withStoreLock {
             val current = read(target)?.let { open(id, it) }
             if (current.contentEquals(expected)) {
-                if (sealed == null) remove(id, target) else write(id, target, sealed)
+                if (sealed == null) {
+                    remove(id, target)
+                    forgetRecordKey(id)
+                } else {
+                    write(id, target, sealed)
+                }
             }
             current
         }
@@ -264,7 +297,7 @@ public class FileCredentialStore(
         val recordKey = ByteArray(KEY_BYTES).also { random.nextBytes(it) }
         try {
             val wrap = Cipher.getInstance(TRANSFORMATION)
-            wrap.init(Cipher.ENCRYPT_MODE, key())
+            wrap.initWithKey(Cipher.ENCRYPT_MODE, null)
             wrap.updateAAD(id.toByteArray())
             val wrapped = wrap.iv + wrap.doFinal(recordKey)
             val iv = ByteArray(IV_BYTES).also { random.nextBytes(it) }
@@ -323,15 +356,18 @@ public class FileCredentialStore(
     private fun openWrapped(id: String, sealed: ByteArray): ByteArray {
         val at = 1 + WRAPPED_BYTES
         if (sealed.size < at + IV_BYTES + TAG_BYTES) throw UnreadableRecordException(id, "credential record $id is malformed")
-        val unwrap = Cipher.getInstance(TRANSFORMATION)
-        unwrap.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(TAG_BYTES * 8, sealed, 1, IV_BYTES))
-        unwrap.updateAAD(id.toByteArray())
-        val unwrapped = try {
-            unwrap.doFinal(sealed, 1 + IV_BYTES, KEY_BYTES + TAG_BYTES)
-        } catch (e: javax.crypto.AEADBadTagException) {
-            throw UnreadableRecordException(id, "credential record $id doesn't decrypt")
+        val wrapped = sealed.copyOfRange(1, at)
+        val recordKey = recordKeyHeld(id, wrapped) ?: run {
+            val unwrap = Cipher.getInstance(TRANSFORMATION)
+            unwrap.initWithKey(Cipher.DECRYPT_MODE, GCMParameterSpec(TAG_BYTES * 8, sealed, 1, IV_BYTES))
+            unwrap.updateAAD(id.toByteArray())
+            val unwrapped = try {
+                unwrap.doFinal(sealed, 1 + IV_BYTES, KEY_BYTES + TAG_BYTES)
+            } catch (e: javax.crypto.AEADBadTagException) {
+                throw UnreadableRecordException(id, "credential record $id doesn't decrypt")
+            }
+            checkedLength(id, keystoreFault?.invoke(unwrapped) ?: unwrapped, KEY_BYTES)
         }
-        val recordKey = checkedLength(id, keystoreFault?.invoke(unwrapped) ?: unwrapped, KEY_BYTES)
         try {
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(recordKey, "AES"), GCMParameterSpec(TAG_BYTES * 8, sealed, at, IV_BYTES))
@@ -341,10 +377,47 @@ public class FileCredentialStore(
             } catch (e: javax.crypto.AEADBadTagException) {
                 throw UnreadableRecordException(id, "credential record $id doesn't decrypt")
             }
-            return checkedLength(id, opened, sealed.size - at - IV_BYTES - TAG_BYTES)
+            val record = checkedLength(id, opened, sealed.size - at - IV_BYTES - TAG_BYTES)
+            holdRecordKey(id, wrapped, recordKey)
+            return record
         } finally {
             recordKey.fill(0)
         }
+    }
+
+    /**
+     * The record keys this store has unwrapped, by record ID, each with
+     * the wrapped key it came from, under [Protection.AFTER_FIRST_UNLOCK]
+     * only: a record read again is opened without asking the Keystore,
+     * and one rewritten (by any process) has another wrapped key, so
+     * isn't. Never under [Protection.WHEN_UNLOCKED]: a key held here would
+     * open a record while the device is locked, when the Keystore key
+     * refuses to. At most [HELD_RECORD_KEYS], the least recently used
+     * dropped; each is zeroed when dropped.
+     */
+    private val heldRecordKeys = object : LinkedHashMap<String, Pair<ByteArray, ByteArray>>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<ByteArray, ByteArray>>): Boolean =
+            (size > HELD_RECORD_KEYS).also { if (it) eldest.value.second.fill(0) }
+    }
+
+    /** A copy of [id]'s record key, held for the record wrapped as [wrapped]; null when none is. */
+    private fun recordKeyHeld(id: String, wrapped: ByteArray): ByteArray? {
+        if (options.protection != Protection.AFTER_FIRST_UNLOCK) return null
+        synchronized(heldRecordKeys) {
+            val (w, key) = heldRecordKeys[id] ?: return null
+            return if (MessageDigest.isEqual(w, wrapped)) key.copyOf() else null
+        }
+    }
+
+    private fun holdRecordKey(id: String, wrapped: ByteArray, recordKey: ByteArray) {
+        if (options.protection != Protection.AFTER_FIRST_UNLOCK) return
+        synchronized(heldRecordKeys) {
+            heldRecordKeys.put(id, wrapped to recordKey.copyOf())?.second?.fill(0)
+        }
+    }
+
+    private fun forgetRecordKey(id: String) {
+        synchronized(heldRecordKeys) { heldRecordKeys.remove(id)?.second?.fill(0) }
     }
 
     /**
@@ -356,7 +429,7 @@ public class FileCredentialStore(
     private fun openKeystore(id: String, sealed: ByteArray): ByteArray {
         if (sealed.size < 1 + IV_BYTES + TAG_BYTES) throw UnreadableRecordException(id, "credential record $id is malformed")
         val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(TAG_BYTES * 8, sealed, 1, IV_BYTES))
+        cipher.initWithKey(Cipher.DECRYPT_MODE, GCMParameterSpec(TAG_BYTES * 8, sealed, 1, IV_BYTES))
         cipher.updateAAD(id.toByteArray())
         val opened = try {
             cipher.inChunks(sealed, 1 + IV_BYTES, sealed.size - 1 - IV_BYTES)
@@ -385,16 +458,83 @@ public class FileCredentialStore(
     }
 
     /** The store's key, made on first use — by one process: made under the store's lock. */
-    private fun key(): SecretKey = existingKey() ?: withStoreLock { existingKey() ?: newKey() }
+    private fun key(): SecretKey =
+        heldKey ?: (existingKey() ?: withStoreLock { existingKey() ?: newKey() }).also { heldKey = it }
+
+    /**
+     * The store's key, once looked up: looking it up is a Keystore call
+     * of its own, which every record read made. Holding it changes
+     * nothing about when it works — each use is still the Keystore's, and
+     * refused while the device is locked under [Protection.WHEN_UNLOCKED].
+     */
+    @Volatile
+    private var heldKey: SecretKey? = null
+
+    /**
+     * Initialises this cipher under the store's key — looked up again, once,
+     * if the key held fails: another store or process may have made the
+     * key again since.
+     */
+    private fun Cipher.initWithKey(mode: Int, spec: GCMParameterSpec?) {
+        val held = heldKey
+        try {
+            if (spec == null) init(mode, key()) else init(mode, key(), spec)
+        } catch (e: GeneralSecurityException) {
+            if (held == null) throw e
+            heldKey = null
+            if (spec == null) init(mode, key()) else init(mode, key(), spec)
+        } catch (e: ProviderException) {
+            if (held == null) throw e
+            heldKey = null
+            if (spec == null) init(mode, key()) else init(mode, key(), spec)
+        }
+    }
 
     private fun existingKey(): SecretKey? =
         JavaKeyStore.getInstance(PROVIDER).apply { load(null) }.getKey(options.keyAlias, null) as? SecretKey
 
+    /**
+     * Makes the store's key where [Options.strongBox] says, as
+     * [AndroidKeystoreKeyStore] makes the wallet's: StrongBox, then the
+     * TEE; any failure in one storage turns to the next, each generation
+     * retried where Keystore reports its failure transient, and a key
+     * that isn't really there, or doesn't encrypt and decrypt, counts as
+     * failing. When every storage fails, the last failure is the cause of
+     * a [StoreException].
+     */
     private fun newKey(): SecretKey {
+        if (options.strongBox == AndroidKeystoreKeyStore.StrongBox.REQUIRED && Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            throw StoreException("StrongBox needs API 28")
+        }
         if (directory.listFiles { f -> f.name.endsWith(SUFFIX) }.orEmpty().isNotEmpty()) {
             // Restored files, or a deleted key: they're unreadable now.
             Log.w(TAG, "the store's key is missing: making a new one, so its existing records can't be read")
         }
+        val storages = keyStorages(options.strongBox, Build.VERSION.SDK_INT)
+        var failure: Exception? = null
+        for (storage in storages) {
+            if (storage == false && failure != null) {
+                Log.w(TAG, "StrongBox couldn't make the store's key (${failure.javaClass.simpleName}): making it in the TEE")
+            }
+            try {
+                val key = retryingTransient { generator(storage).generateKey() }
+                checkGenerated()
+                // A key that's made but can't be used would make every write
+                // fail: tried once, here, where the TEE may be left to try.
+                probe(key)
+                return key
+            } catch (e: GeneralSecurityException) {
+                runCatching { deleteKey() } // so its own failure doesn't hide e
+                failure = e
+            } catch (e: ProviderException) {
+                runCatching { deleteKey() }
+                failure = e
+            }
+        }
+        throw StoreException("couldn't make the store's key" + (failure?.let { ": ${it.javaClass.simpleName}: ${it.message}" } ?: ": no key storage to try"), failure)
+    }
+
+    private fun generator(strongBox: Boolean?): KeyGenerator {
         val spec = KeyGenParameterSpec.Builder(options.keyAlias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
             .setKeySize(256)
             .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
@@ -402,11 +542,48 @@ public class FileCredentialStore(
             // API 28's: below it, WHEN_UNLOCKED holds only until the
             // first unlock since boot, as AFTER_FIRST_UNLOCK does.
             .apply { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) setUnlockedDeviceRequired(options.protection == Protection.WHEN_UNLOCKED) }
+            .apply { if (strongBox != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) setIsStrongBoxBacked(strongBox) }
             .build()
-        return KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, PROVIDER).run {
-            init(spec)
-            generateKey()
-        }
+        return KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, PROVIDER).apply { init(spec) }
+    }
+
+    /**
+     * Fails unless the store's key is in Keystore as a key it generated:
+     * some devices report success for a key that then isn't there.
+     */
+    private fun checkGenerated() {
+        val key = existingKey() ?: throw ProviderException("Keystore reported generating the store's key, but it isn't there")
+        if (keyInfo(key).origin != KeyProperties.ORIGIN_GENERATED) throw ProviderException("the store's key wasn't generated in Keystore")
+    }
+
+    /** Wraps and unwraps a key's worth of bytes under [key], as [seal] and [open] will. */
+    private fun probe(key: SecretKey) {
+        val bytes = ByteArray(KEY_BYTES).also { random.nextBytes(it) }
+        val wrap = Cipher.getInstance(TRANSFORMATION).apply { init(Cipher.ENCRYPT_MODE, key) }
+        val wrapped = wrap.doFinal(bytes)
+        val unwrap = Cipher.getInstance(TRANSFORMATION).apply { init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(TAG_BYTES * 8, wrap.iv)) }
+        if (!MessageDigest.isEqual(unwrap.doFinal(wrapped), bytes)) throw ProviderException("the store's new key doesn't decrypt what it encrypts")
+    }
+
+    private fun deleteKey() {
+        JavaKeyStore.getInstance(PROVIDER).apply { load(null) }.deleteEntry(options.keyAlias)
+    }
+
+    private fun keyInfo(key: SecretKey): KeyInfo =
+        SecretKeyFactory.getInstance(key.algorithm, PROVIDER).getKeySpec(key, KeyInfo::class.java) as KeyInfo
+
+    /**
+     * Where the store's key lives, as a KeyProperties.SECURITY_LEVEL_
+     * value: StrongBox, the TEE, or software; null before the store makes
+     * it, on first use. Android 11 and below can't tell StrongBox from the
+     * TEE: there, a key in secure hardware is the TEE's.
+     */
+    @SuppressLint("InlinedApi")
+    public fun keySecurityLevel(): Int? {
+        val info = keyInfo(existingKey() ?: return null)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) return info.securityLevel
+        @Suppress("DEPRECATION")
+        return if (info.isInsideSecureHardware) KeyProperties.SECURITY_LEVEL_TRUSTED_ENVIRONMENT else KeyProperties.SECURITY_LEVEL_SOFTWARE
     }
 
     /** Stores in the app's standard places. */
@@ -432,6 +609,9 @@ public class FileCredentialStore(
         private const val WRAPPED_BYTES = IV_BYTES + KEY_BYTES + TAG_BYTES
         private val random = SecureRandom()
         private const val CHUNK_BYTES = 4096
+
+        /** The most record keys a store holds unwrapped ([Protection.AFTER_FIRST_UNLOCK] only). */
+        private const val HELD_RECORD_KEYS = 512
 
         /**
          * Tests only: run on what each Keystore decryption returns, to

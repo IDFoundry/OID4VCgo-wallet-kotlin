@@ -57,12 +57,16 @@ describes the trade-off.
 
 `FileCredentialStore` encrypts each credential under a Keystore key that
 works only while the device is unlocked, in a directory no backup
-copies: a credential is useless without its holder key, which can't
-leave this device. Its writes lock a file in that directory, so
-processes of the app that share it — a credential provider service in
-its own process, say — never both use one copy. A `CredentialStore` of
-your own implements `compareAndSwap` atomically across them too. A
-record the store can't read is left out of the wallet's credentials.
+copies. The key is in the TEE; `Options.strongBox` puts it in StrongBox
+where the device has it, falling back to the TEE. StrongBox makes every
+record read and write several times slower, which shows when the wallet
+lists credentials. A credential is useless without its holder key,
+which can't leave this device. Its writes lock a file in that
+directory, so processes of the app that share it — a credential
+provider service in its own process, say — never both use one copy.
+A `CredentialStore` of your own implements `compareAndSwap` atomically
+across them too. A record the store can't read is left out of the
+wallet's credentials.
 `unreadableRecordIDs()` names the damaged ones, which can't be
 recovered: delete each and have the holder receive that credential
 again. `unsupportedRecordIDs()` names those a newer version of the app
@@ -81,7 +85,10 @@ app. Before the wallet makes an instance or holder key, it asks
 `attestationChallenge` for a challenge from your backend;
 `AndroidKeystoreKeyStore` makes the key over it, and the key then
 reaches `walletAttestation` or `keyAttestation` as `KeyEvidence`, with
-its attestation certificate chain for your backend to verify.
+its attestation certificate chain for your backend to verify. A Key
+Attestation request also names the issuance's instance key, which
+`walletAttestation` attested first, so your backend can give the Key
+Attestation that key's status.
 [Going to production](GoingToProduction.md) lists what it checks.
 
 ```kotlin
@@ -93,6 +100,8 @@ import androidx.annotation.RequiresApi
 import dev.idfoundry.oid4vcwallet.AndroidKeystoreKeyStore
 import dev.idfoundry.oid4vcwallet.BiometricPromptAuthenticator
 import dev.idfoundry.oid4vcwallet.FileCredentialStore
+import dev.idfoundry.oid4vcwallet.FileInstanceRegistry
+import dev.idfoundry.oid4vcwallet.HttpWalletProvider
 import dev.idfoundry.oid4vcwallet.KeyAttestationRequest
 import dev.idfoundry.oid4vcwallet.KeyEvidence
 import dev.idfoundry.oid4vcwallet.KeyPurpose
@@ -123,8 +132,10 @@ class BackendWalletProvider(private val backend: String) : WalletProvider {
             .put("client_id", request.clientID)
             .put("instance_key", evidence(request.instanceKey)))
 
+    // instanceKey is the issuance's, which walletAttestation sent first.
     override suspend fun keyAttestation(request: KeyAttestationRequest): String =
         post("key-attestation", JSONObject()
+            .put("instance_key", JSONObject(request.instanceKey.jwk.decodeToString()))
             .put("keys", JSONArray(request.keys.map(::evidence)))
             .put("nonce", request.nonce))
 
@@ -150,6 +161,20 @@ class BackendWalletProvider(private val backend: String) : WalletProvider {
 
 An `IOException` the provider throws reaches the wallet as a retryable
 `network` error; any other is `platform`.
+
+If your backend is built with OID4VCgo's `walletprovider` package, you
+needn't write this class: `HttpWalletProvider` speaks its protocol
+([WALLET_PROVIDER.md](https://github.com/IDFoundry/OID4VCgo/blob/main/mobile/WALLET_PROVIDER.md)),
+registering the installation once, with a registration key of its own,
+and sending each instance and holder key's attestation chain. Give it a
+registry for its registration; it keeps the registration key in Android
+Keystore, apart from the wallet's keys:
+
+```kotlin
+/** The Wallet Provider, when the backend is OID4VCgo's `walletprovider`, mounted at /wp. */
+fun oid4vcgoWalletProvider(context: Context): WalletProvider =
+    HttpWalletProvider("https://provider.example.com/wp", FileInstanceRegistry.standard(context))
+```
 
 ## Create the wallet
 
