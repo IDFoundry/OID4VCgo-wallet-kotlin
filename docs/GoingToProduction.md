@@ -35,6 +35,11 @@ services on loopback addresses are refused. The rest is the app's.
   several times slower on every record read and write;
   `keySecurityLevel()` says where it is, to check or log.
   `InMemoryCredentialStore` is for tests.
+- Give the store `Options(lockSignal = LockSignal.of(context))` so a
+  record read again needs no Keystore call: it then holds the record
+  keys it unwraps while the device is unlocked, and drops them when the
+  screen turns off. Without it every record read is a Keystore call
+  (about 10 ms in the TEE, 40 ms in StrongBox).
 - Call `Wallet.sweepOrphanedKeys` at launch, before any issuance, so keys
   an interrupted issuance left don't accumulate.
 - Make one `Wallet` per key store and credential store in each process,
@@ -334,12 +339,15 @@ ecosystem, and record why:
   (1 MiB) and identifier list (4 MiB) `checkStatus` reads. A larger
   list fails every check of the credentials on it: raise them only for
   issuers whose lists are larger.
-- `statusCacheDir`: a directory of the app's own, under
-  `context.cacheDir`, where `checkStatus` keeps the lists it verified
+- `statusCacheDir`: where `checkStatus` keeps the lists it verified
   across launches. Each launch then revalidates a kept list with its
   server (a `304 Not Modified`) instead of downloading it again, which
   matters for lists of millions of entries; a list the server doesn't
-  confirm is never used.
+  confirm is never used. Left null, the lists are kept in
+  `oid4vcwallet-status-lists` in `context.cacheDir`, and in memory only
+  when the key authenticating them can't be had. Set a directory of the
+  app's own to keep them elsewhere (a failure to get its key then fails
+  the wallet), or `""` to keep them in memory only.
 - `mdocIssuerRoots` and `mdocIssuerRootsByDocType`: the IACAs mdocs, or
   each document type, must chain to, instead of `issuerRoots`, so an
   SD-JWT VC issuer's CA can't sign an mDL. `mdocIssuerRequireEKU`
