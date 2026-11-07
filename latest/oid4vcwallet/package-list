@@ -19,6 +19,7 @@ $dokka.location:dev.idfoundry.oid4vcwallet/AndroidKeystoreKeyStore///PointingToD
 $dokka.location:dev.idfoundry.oid4vcwallet/AndroidKeystoreKeyStore/AndroidKeystoreKeyStore/#dev.idfoundry.oid4vcwallet.AndroidKeystoreKeyStore.Options#dev.idfoundry.oid4vcwallet.HolderAuthenticator?/PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-android-keystore-key-store/-android-keystore-key-store.html
 $dokka.location:dev.idfoundry.oid4vcwallet/AndroidKeystoreKeyStore/agree/#kotlin.String#kotlin.ByteArray/PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-android-keystore-key-store/agree.html
 $dokka.location:dev.idfoundry.oid4vcwallet/AndroidKeystoreKeyStore/attestationChain/#kotlin.String/PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-android-keystore-key-store/attestation-chain.html
+$dokka.location:dev.idfoundry.oid4vcwallet/AndroidKeystoreKeyStore/cancelKeyUse/#kotlin.String/PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-android-keystore-key-store/cancel-key-use.html
 $dokka.location:dev.idfoundry.oid4vcwallet/AndroidKeystoreKeyStore/createKey/#dev.idfoundry.oid4vcwallet.KeyPurpose#kotlin.ByteArray?/PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-android-keystore-key-store/create-key.html
 $dokka.location:dev.idfoundry.oid4vcwallet/AndroidKeystoreKeyStore/createKey/#dev.idfoundry.oid4vcwallet.KeyPurpose/PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-android-keystore-key-store/create-key.html
 $dokka.location:dev.idfoundry.oid4vcwallet/AndroidKeystoreKeyStore/deleteKey/#kotlin.String/PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-android-keystore-key-store/delete-key.html
@@ -220,6 +221,7 @@ $dokka.location:dev.idfoundry.oid4vcwallet/HttpWalletProvider///PointingToDeclar
 $dokka.location:dev.idfoundry.oid4vcwallet/HttpWalletProvider/HttpWalletProvider/#kotlin.String#dev.idfoundry.oid4vcwallet.InstanceRegistry#dev.idfoundry.oid4vcwallet.KeyStore#kotlin.Int/PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-http-wallet-provider/-http-wallet-provider.html
 $dokka.location:dev.idfoundry.oid4vcwallet/HttpWalletProvider/attestationChallenge/#dev.idfoundry.oid4vcwallet.KeyPurpose/PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-http-wallet-provider/attestation-challenge.html
 $dokka.location:dev.idfoundry.oid4vcwallet/HttpWalletProvider/keyAttestation/#dev.idfoundry.oid4vcwallet.KeyAttestationRequest/PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-http-wallet-provider/key-attestation.html
+$dokka.location:dev.idfoundry.oid4vcwallet/HttpWalletProvider/sweepOrphanedRegistrationKeys/#/PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-http-wallet-provider/sweep-orphaned-registration-keys.html
 $dokka.location:dev.idfoundry.oid4vcwallet/HttpWalletProvider/walletAttestation/#dev.idfoundry.oid4vcwallet.WalletAttestationRequest/PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-http-wallet-provider/wallet-attestation.html
 $dokka.location:dev.idfoundry.oid4vcwallet/InMemoryCredentialStore///PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-in-memory-credential-store/index.html
 $dokka.location:dev.idfoundry.oid4vcwallet/InMemoryCredentialStore/InMemoryCredentialStore/#/PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-in-memory-credential-store/-in-memory-credential-store.html
@@ -280,6 +282,7 @@ $dokka.location:dev.idfoundry.oid4vcwallet/KeyPurpose/valueOf/#kotlin.String/Poi
 $dokka.location:dev.idfoundry.oid4vcwallet/KeyPurpose/values/#/PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-key-purpose/values.html
 $dokka.location:dev.idfoundry.oid4vcwallet/KeyStore///PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-key-store/index.html
 $dokka.location:dev.idfoundry.oid4vcwallet/KeyStore/attestationChain/#kotlin.String/PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-key-store/attestation-chain.html
+$dokka.location:dev.idfoundry.oid4vcwallet/KeyStore/cancelKeyUse/#kotlin.String/PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-key-store/cancel-key-use.html
 $dokka.location:dev.idfoundry.oid4vcwallet/KeyStore/createKey/#dev.idfoundry.oid4vcwallet.KeyPurpose#kotlin.ByteArray?/PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-key-store/create-key.html
 $dokka.location:dev.idfoundry.oid4vcwallet/KeyStore/createKey/#dev.idfoundry.oid4vcwallet.KeyPurpose/PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-key-store/create-key.html
 $dokka.location:dev.idfoundry.oid4vcwallet/KeyStore/deleteKey/#kotlin.String/PointingToDeclaration/oid4vcwallet/dev.idfoundry.oid4vcwallet/-key-store/delete-key.html
