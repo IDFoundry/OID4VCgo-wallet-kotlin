@@ -348,7 +348,19 @@ public data class WalletConfiguration(
          * the response carries a MAC (deviceMac). The reader can check it
          * but can't prove to anyone else that this device took part; the
          * issuer-signed elements stay provable. A holder key that can't
-         * agree keys signs instead.
+         * agree keys signs instead, without an error: the response is a
+         * signature, as [SIGNATURE]'s.
+         *
+         * With [AndroidKeystoreKeyStore]'s default options its holder keys
+         * can't: they sign only, and each signature requires the holder.
+         * A holder key agrees keys when made with
+         * [AndroidKeystoreKeyStore.Options.holderKeyAgreement] on API 31
+         * or later, and either a positive
+         * [AndroidKeystoreKeyStore.Options.holderAuthenticationTimeout] or
+         * [AndroidKeystoreKeyStore.Options.holderUserAuthentication] off,
+         * the app authenticating the holder itself. Keys made before keep
+         * signing. A reader's [VerifiedMdoc.deviceAuth] says which it
+         * got.
          */
         @SerialName("mac_preferred") MAC_PREFERRED,
     }
@@ -741,10 +753,41 @@ public class Wallet(
      * crashed in the middle of, or one dropped without [Issuance.close]
      * — and returns how many. Call it at launch, before any issuance or
      * refresh: one in progress holds keys of its own.
+     *
+     * What it may delete: key pairs under [keyStore]'s
+     * [AndroidKeystoreKeyStore.Options.aliasPrefix] — holder, instance
+     * and DPoP keys — that no credential is bound to. Pass the wallet's
+     * own key store, under a prefix of its own: another key pair of the
+     * app's under that prefix would be deleted too. Secret keys — the
+     * credential store's and the status cache's — are never deleted.
+     *
+     * @throws IllegalArgumentException, deleting nothing, for a store
+     *   whose prefix covers or falls under
+     *   [HttpWalletProvider.REGISTRATION_KEY_ALIAS_PREFIX]: that would
+     *   delete the Wallet Provider registration key, which
+     *   [HttpWalletProvider.sweepOrphanedRegistrationKeys] sweeps instead.
      */
     public suspend fun sweepOrphanedKeys(keyStore: AndroidKeystoreKeyStore): Int {
+        walletSweepRefusal(keyStore.options.aliasPrefix)?.let { throw IllegalArgumentException(it) }
         val keep = decode<KeyIDsResult>(OID4VC.offMain { handle.holderKeyIDs() }).keyIDs.toSet()
         return OID4VC.offMain { keyStore.deleteKeys(keep) }
+    }
+
+    internal companion object {
+        /**
+         * Why [sweepOrphanedKeys] refuses a key store under [aliasPrefix],
+         * or null: an empty prefix covers every key, and one overlapping
+         * the registration key's prefix covers that key.
+         */
+        internal fun walletSweepRefusal(aliasPrefix: String): String? {
+            val registration = HttpWalletProvider.REGISTRATION_KEY_ALIAS_PREFIX
+            return when {
+                aliasPrefix.isEmpty() -> "sweep keys: the key store's aliasPrefix is empty, which covers every key"
+                aliasPrefix.startsWith(registration) || registration.startsWith(aliasPrefix) ->
+                    "sweep keys: the key store's aliasPrefix $aliasPrefix overlaps the Wallet Provider registration key's, $registration"
+                else -> null
+            }
+        }
     }
 
     /** Every credential the wallet holds. */
@@ -924,7 +967,9 @@ public class Wallet(
      * shown it and whether presenting it there now would be linkable
      * (`shownToVerifier`, `linkableHere`): for a consent screen shown
      * before the platform releases the request itself.
-     * [MdocPresentation.request] says the same once it has.
+     * [MdocPresentation.request] says the same once it has. Every held
+     * mdoc is listed, an expired, revoked or suspended one too: offer the
+     * holder only those whose [CredentialSummary.presentable] is true.
      */
     public suspend fun mdocCandidates(origin: String): List<CredentialSummary> {
         return decode<CredentialsResult>(OID4VC.offMain { handle.mdocCandidates(origin) }).credentials
@@ -980,6 +1025,18 @@ public class Wallet(
         val app = context.applicationContext
         return startNfcPresentation(timeouts, modes, negotiated, nfcData) { it.transport(app) }
     }
+
+    /**
+     * [startNfcPresentation] with its handover and transport named by
+     * [options] rather than by two adjacent Booleans:
+     * `startNfcPresentation(context, options = NfcEngagementOptions(nfcData = true))`.
+     */
+    public suspend fun startNfcPresentation(
+        context: Context,
+        timeouts: ProximityTimeouts = ProximityTimeouts(),
+        modes: Set<ProximityBLEMode> = ProximityBLEMode.entries.toSet(),
+        options: NfcEngagementOptions,
+    ): NfcPresentation = startNfcPresentation(context, timeouts, modes, options.negotiated, options.nfcData)
 
     /**
      * Offers QR/BLE and NFC with independent keys and one consent flow. A valid

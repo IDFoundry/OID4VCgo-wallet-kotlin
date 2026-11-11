@@ -71,6 +71,7 @@ import dev.idfoundry.oid4vcwallet.ProximityReaderConfiguration
 import dev.idfoundry.oid4vcwallet.ProximityReaderSession
 import dev.idfoundry.oid4vcwallet.VerifiedMdoc
 import dev.idfoundry.oid4vcwallet.Wallet
+import java.security.cert.X509Certificate
 import kotlinx.coroutines.flow.first
 
 /** What the holder agreed to share: a requested document, the held mdoc to answer it with, and the elements to disclose. */
@@ -130,6 +131,22 @@ makes holder keys created from then on usable for a short time after
 the holder authenticates, so one prompt covers the whole response. If
 the holder cancels any prompt, nothing is sent and the request stands.
 
+### deviceMac
+
+`WalletConfiguration.proximityDeviceAuth = MAC_PREFERRED` answers with
+deviceMac, which the reader can check but can't show anyone else, where
+the holder key can agree keys, and signs otherwise — silently: nothing
+fails, and the response is a signature. Under
+`AndroidKeystoreKeyStore`'s default options it always signs, since
+holder keys are made to sign only and require the holder for each use.
+A holder key agrees keys when it was made with
+`Options.holderKeyAgreement = true`, on API 31 or later, and with either
+a positive `Options.holderAuthenticationTimeout` or
+`holderUserAuthentication = false` (the app then authenticates the
+holder before each presentation). Keys made before keep signing until
+their credentials are issued again. A reader's `VerifiedMdoc.deviceAuth`
+says which it got: check it with a test reader.
+
 `cancel()` ends a session at any point, as the holder leaves the screen,
 say. `ProximityTimeouts` sets how long it waits: by default 60 seconds
 for a reader to connect, 30 for its request, and 300 for the holder to
@@ -150,16 +167,22 @@ status is checked (`statusCheck`). `development` relaxes this, for trying
 out a development issuer's documents; never ship an app with it set. `start` takes the holder's QR code and what to ask for.
 
 ```kotlin
+/** A verified mdoc whose issuer the reader doesn't accept. */
+class UnacceptedIssuerException : Exception("the reader doesn't accept this document's issuer")
+
 /**
- * Reads an mDL's name and portrait from the holder whose QR code was scanned. Returns the verified
- * mdoc, its status checked, or null if the holder declined.
+ * Reads an mDL's name and portrait from the holder whose QR code was scanned. `mdlIACAs` are the
+ * IACAs (PEM) trusted to issue mDLs, and only mDLs; `accepts` decides on the verified certificate
+ * path, leaf first. Returns the verified mdoc, its status checked, or null if the holder declined.
  */
-suspend fun readInPerson(context: Context, qrCode: String, issuerRoots: String, crls: String): VerifiedMdoc? {
+suspend fun readInPerson(
+    context: Context, qrCode: String, mdlIACAs: String, crls: String,
+    accepts: (List<X509Certificate>) -> Boolean,
+): VerifiedMdoc? {
     val reader = ProximityReader(
         ProximityReaderConfiguration(
-            issuerRoots = issuerRoots, crls = crls,
+            issuerRoots = "", issuerRootsByDocType = mapOf("org.iso.18013.5.1.mDL" to mdlIACAs), crls = crls,
             revocation = listOf(ProximityReaderConfiguration.RevocationRole.ISSUER, ProximityReaderConfiguration.RevocationRole.STATUS),
-            anyIssuerForAnyType = true,
             statusCheck = ProximityReaderConfiguration.StatusCheck.CHECK,
         ),
     )
@@ -168,8 +191,10 @@ suspend fun readInPerson(context: Context, qrCode: String, issuerRoots: String, 
         mapOf("org.iso.18013.5.1" to listOf("given_name", "family_name", "portrait")),
     )
     return when (val state = session.state.first { it.isFinal }) {
-        // Its status was checked first: valid, or it names none.
-        is ProximityReaderSession.State.Verified -> state.result
+        // Its status was checked first: valid, or it names none. Decide on the verified chain,
+        // not the names shown.
+        is ProximityReaderSession.State.Verified ->
+            state.result.takeIf { accepts(it.issuerChain) } ?: throw UnacceptedIssuerException()
         // A revoked or suspended document is WalletException Code.documentNotValid.
         is ProximityReaderSession.State.Failed -> throw state.error
         else -> null
@@ -247,7 +272,7 @@ them to the presentation your app has started. No presentation started,
 no answer. NFC needs no runtime permission; it needs NFC on, and the
 device unlocked.
 
-Declare an application subclass, for example `class IdentityNfcService :
+Declare a service subclass, for example `class IdentityNfcService :
 NfcEngagementService()`, and its HCE service:
 
 ```xml
@@ -462,18 +487,7 @@ commitment, gate completion, NFC BLE startup with its modes, QR withdrawal
 and cleanup, and an aborted attempt that retains QR. Payloads and credentials
 are not logged. The default is disabled; existing app behavior is unchanged.
 
-The offers have independent ephemeral keys, DeviceEngagements and service UUIDs.
-QR uses a null Handover; NFC uses exactly `[Hs, null]` (static) or `[Hs, Hr]`
-(negotiated). Selection switches the Go session before processing any request;
-consent and response remain one state machine. This avoids assuming permission
-to reuse one EDeviceKey across engagement mechanisms. Existing Annex D vectors
-cover transcript construction; they do not establish that key reuse is permitted.
-
 With `nfcData = true`, missing Bluetooth runtime permissions omit the QR offer
 (`qrCode == ""`) and no Bluetooth transport is constructed. NFC remains armed.
 A QR transport startup failure also leaves the NFC offer available until the
 connection timeout. NFC-to-BLE requires Bluetooth permissions as before.
-
-The additive method keeps the JVM descriptors and default-argument bridges of
-the existing QR and NFC APIs unchanged. `CombinedPresentation` delegates the
-existing state/consent flow and uses the same serialized NFC owner registry.

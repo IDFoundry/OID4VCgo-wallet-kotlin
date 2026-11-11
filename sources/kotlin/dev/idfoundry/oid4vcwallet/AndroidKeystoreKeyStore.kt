@@ -71,6 +71,18 @@ public fun interface HolderAuthenticator {
     }
 }
 
+/**
+ * BiometricPrompt's errors for the holder dismissing it: their cancel, or
+ * the system cancelling it (another app in front). The prompt allows the
+ * screen lock, so it has no negative button. (API 28's constants, but
+ * compile-time ints, used only by the API 30 prompt.)
+ */
+@SuppressLint("InlinedApi")
+private val HOLDER_CANCELLED = setOf(
+    BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED,
+    BiometricPrompt.BIOMETRIC_ERROR_CANCELED,
+)
+
 // API 30's: it allows biometrics or the screen lock (setAllowedAuthenticators),
 // as the per-use holder keys it's for do, which need 30 too.
 /**
@@ -109,7 +121,12 @@ public class BiometricPromptAuthenticator(
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    cont.resumeWithException(StoreException("the holder wasn't authenticated: $errString"))
+                    val failure = if (errorCode in HOLDER_CANCELLED) {
+                        HolderCancelledException("the holder cancelled: $errString")
+                    } else {
+                        StoreException("the holder wasn't authenticated: $errString")
+                    }
+                    cont.resumeWithException(failure)
                 }
             }
             if (signature != null) {
@@ -122,9 +139,11 @@ public class BiometricPromptAuthenticator(
 }
 
 /**
- * The wallet's keys, in Android Keystore: P-256 keys whose private
- * halves never leave its secure hardware — StrongBox where the device
- * has it ([Options.strongBox]), else the TEE. Each key's ID is its
+ * The wallet's keys, in Android Keystore: non-exportable P-256 keys
+ * made in StrongBox where the device has it ([Options.strongBox]), else
+ * the TEE — or, on a device whose Keystore has no secure hardware, in
+ * Keystore's software, which [securityLevel] reports and a key's
+ * attestation chain shows the Wallet Provider. Each key's ID is its
  * Keystore alias after [Options.aliasPrefix]. Keys are usable only while
  * the device is unlocked, and holder keys, if
  * [Options.holderUserAuthentication], each time they sign only after
@@ -133,6 +152,11 @@ public class BiometricPromptAuthenticator(
  * one the wallet's [WalletProvider.attestationChallenge] gives — carries
  * an Android Key Attestation chain ([attestationChain]), which the wallet
  * hands the Wallet Provider with the key.
+ *
+ * The default [Options] need API 30 (per-use holder authentication):
+ * below it, construction throws IllegalStateException rather than make
+ * weaker keys. On a minSdk below 30, pass [Options.forDevice] and
+ * authenticate the holder in the app where it turns that off.
  */
 public class AndroidKeystoreKeyStore(
     /** How the store makes keys. */
@@ -143,7 +167,7 @@ public class AndroidKeystoreKeyStore(
         // Per-use authentication by biometrics or the screen lock is API
         // 30's: below it, fail now rather than make weaker keys.
         check(!options.holderUserAuthentication || Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            "holderUserAuthentication needs API 30; set it false and authenticate the holder in the app"
+            "holderUserAuthentication needs API 30; use Options.forDevice() and authenticate the holder in the app"
         }
         // Without one, holder keys could never sign: say so now, not at
         // the first presentation.
@@ -218,8 +242,10 @@ public class AndroidKeystoreKeyStore(
         /**
          * Prefixes every key's alias. Keys under another prefix are never
          * touched, by a sweep or anything else. It must be non-empty, and
-         * must not cover [FileCredentialStore]'s default key alias, which a
-         * sweep would then delete.
+         * must not cover [FileCredentialStore]'s default key alias. The
+         * wallet's mustn't cover, or fall under,
+         * [HttpWalletProvider.REGISTRATION_KEY_ALIAS_PREFIX]:
+         * [Wallet.sweepOrphanedKeys] refuses such a store.
          */
         val aliasPrefix: String = "org.idfoundry.oid4vcgo.key.",
         /**
@@ -254,7 +280,27 @@ public class AndroidKeystoreKeyStore(
          * again.
          */
         val holderAuthenticationTimeout: kotlin.time.Duration = kotlin.time.Duration.ZERO,
-    )
+    ) {
+        /** Options for the device the app runs on. */
+        public companion object {
+            /**
+             * [base] as this device can make it: on API 30 and later
+             * unchanged; below it, with [holderUserAuthentication] (and
+             * [holderAuthenticationTimeout]) off, since Keystore can't
+             * require the holder for each use there. Then nothing in the
+             * key asks for the holder: the app must authenticate them
+             * itself (BiometricPrompt, or the keyguard) before every
+             * presentation, as [holderUserAuthentication] describes.
+             * Without it, the default options fail on API 26–29.
+             */
+            public fun forDevice(base: Options = Options(), sdkInt: Int = Build.VERSION.SDK_INT): Options =
+                if (sdkInt >= Build.VERSION_CODES.R) {
+                    base
+                } else {
+                    base.copy(holderUserAuthentication = false, holderAuthenticationTimeout = kotlin.time.Duration.ZERO)
+                }
+        }
+    }
 
     private val keystore: JavaKeyStore = JavaKeyStore.getInstance(PROVIDER).apply { load(null) }
 
@@ -331,6 +377,12 @@ public class AndroidKeystoreKeyStore(
      * wallet signs. One usable for a while after the holder authenticates
      * ([Options.holderAuthenticationTimeout]) agrees, asking the holder
      * first when they haven't lately.
+     *
+     * The wallet signs instead without telling the app: under the default
+     * [Options] — no [Options.holderKeyAgreement], and per-use holder
+     * authentication — every response under
+     * [WalletConfiguration.ProximityDeviceAuth.MAC_PREFERRED] is a
+     * deviceSignature, asking the holder as a signature does.
      */
     override fun agree(id: String, peerPublicKey: ByteArray): ByteArray {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) throw KeyAgreementUnsupportedException("key agreement in Android Keystore needs API 31")
@@ -343,8 +395,10 @@ public class AndroidKeystoreKeyStore(
         return agreement.generateSecret()
     }
 
-
-
+    // Lint can't follow digests through KeyAttempt: they are only ever
+    // DIGEST_FALLBACKS' KeyProperties.DIGEST_ constants, which setDigests
+    // takes.
+    @SuppressLint("WrongConstant")
     private fun spec(id: String, purpose: KeyPurpose, purposes: Int, digests: Array<String>, strongBox: Boolean?, challenge: ByteArray?): KeyGenParameterSpec {
         val spec = KeyGenParameterSpec.Builder(alias(id), purposes)
             .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
@@ -494,11 +548,17 @@ public class AndroidKeystoreKeyStore(
      * Deletes every key this store holds except [except], and returns how
      * many it deleted. `Wallet.sweepOrphanedKeys` calls it with the keys
      * the wallet's credentials are bound to.
+     *
+     * It deletes only key pairs (`KeyStore.PrivateKeyEntry`) under
+     * [Options.aliasPrefix], as this store makes: a secret key under it —
+     * [FileCredentialStore]'s, under a custom
+     * [FileCredentialStore.Options.keyAlias], or the status cache's — is
+     * kept.
      */
     public fun deleteKeys(except: Set<String>): Int {
         var deleted = 0
         for (id in keyIDs()) {
-            if (id !in except) {
+            if (id !in except && keystore.entryInstanceOf(options.aliasPrefix + id, JavaKeyStore.PrivateKeyEntry::class.java)) {
                 deleteKey(id)
                 deleted++
             }
