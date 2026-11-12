@@ -35,7 +35,8 @@ public data class WalletConfiguration(
     /**
      * Where the issuer's pages send the holder back to: a private-use URI
      * the app receives, in `reverse.domain:/path` form
-     * (`com.example.wallet:/callback`). Empty for a wallet that receives
+     * (`com.example.wallet:/callback`), or with an authority
+     * (`com.example.wallet://callback`). Empty for a wallet that receives
      * only pre-authorized codes.
      */
     @SerialName("redirect_uri") val redirectURI: String = "",
@@ -77,6 +78,19 @@ public data class WalletConfiguration(
      * [verifierRoots] accepts.
      */
     @SerialName("require_signed_dcapi_requests") val requireSignedDCAPIRequests: Boolean = false,
+    /**
+     * Also answers Verifiers whose client ID has the `x509_san_dns`
+     * prefix (OpenID4VP 1.0 §5.9.3), besides `x509_hash`, the one HAIP
+     * 1.0 has Verifiers use: the DNS name must be one of the request's
+     * signing certificate, which must chain to [verifierRoots], and, for
+     * a request from a link, the host of its response URI; a Digital
+     * Credentials API request is bound to the calling origin by its
+     * `expected_origins` instead. Needs [verifierRoots]. Every name in a
+     * certificate under [verifierRoots] is then a Verifier the wallet
+     * answers, so set it only where those roots certify Verifiers alone,
+     * or with [verifierRequireEKU].
+     */
+    @SerialName("accept_x509_san_dns") val acceptX509SANDNS: Boolean = false,
     /**
      * Relaxes what production requires, for a wallet talking to services
      * on a development machine. Never ship an app with it set. It lets
@@ -141,10 +155,17 @@ public data class WalletConfiguration(
     /** The profile issuance follows. */
     @SerialName("issuance_profile") val issuanceProfile: IssuanceProfile = IssuanceProfile.OPENID4VCI,
     /**
+     * Names the key of a jwt proof carrying a key attestation in `jwk`
+     * rather than by its index in the attestation (`kid` `"0"`), the
+     * default, which issuers following ETSI TS 119 472-3, such as the
+     * EUDI reference PID issuer, require. Set it only for an issuer that
+     * takes no index.
+     */
+    @SerialName("proof_key_by_jwk") val proofKeyByJWK: Boolean = false,
+    /**
      * Names the key of a jwt proof carrying a key attestation by its
-     * index in the attestation (`kid` `"0"`) rather than in `jwk`, as
-     * issuers following ETSI TS 119 472-3, such as the EUDI reference PID
-     * issuer, require. An issuer taking only `jwk` refuses it.
+     * index in the attestation, which is now the default: it has no
+     * effect, and can't be set with [proofKeyByJWK].
      */
     @SerialName("proof_key_by_index") val proofKeyByIndex: Boolean = false,
     /**
