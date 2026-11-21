@@ -42,6 +42,7 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 import dev.idfoundry.oid4vcwallet.gomobile.mobile.Mobile
 import dev.idfoundry.oid4vcwallet.gomobile.mobile.ProximityPresentation as MobileProximityPresentation
 import dev.idfoundry.oid4vcwallet.gomobile.mobile.ProximityReader as MobileProximityReader
@@ -53,9 +54,22 @@ import dev.idfoundry.oid4vcwallet.gomobile.mobile.ProximityReaderSession as Mobi
  * seconds of inactivity before ending a session, §9.1.1.4).
  */
 public data class ProximityTimeouts(
-    /** For the other device to connect, after the QR code is shown or scanned. */
+    /**
+     * For the other device to connect, after the QR code is shown or
+     * scanned. A reader in mdoc peripheral server mode connects to
+     * whichever device advertises the holder's service, so within this it
+     * also passes over devices whose answers aren't the holder's and sends
+     * its request to the next: a bare "declined", which isn't
+     * authenticated, is reported once no other device advertises the
+     * holder's service for 5 seconds, or this ends.
+     */
     val connect: Duration = 60.seconds,
-    /** For the reader's request, once connected. */
+    /**
+     * For the reader's request, once connected. As the holder's GATT
+     * server, connected is when any device first starts a session (State
+     * 0x01), not necessarily the reader: the reader's whole window may be
+     * this, not [connect] and this.
+     */
     val request: Duration = 30.seconds,
     /** For the holder to decide, or the holder's answer to arrive. */
     val idle: Duration = 300.seconds,
@@ -343,10 +357,9 @@ public class ProximityPresentation internal constructor(
         try {
             within(timeouts.connect, "no reader connected") { transport.connect() }
             advance(State.WaitingForReader, State.Connected)
-            val first = within(timeouts.request, "the reader sent no request") { transport.receive() }
+            val event = within(timeouts.request, "the reader sent no request") { firstEvent() }
             // An "ended" event has finished the session; any other ("none")
             // carried no request, so nothing would ever end it.
-            val event = handleMessage(first).event
             if (event != "request") {
                 if (event != "ended") {
                     sendTermination()
@@ -390,9 +403,29 @@ public class ProximityPresentation internal constructor(
         }
     }
 
-    /** Hands [message] to Go, sends its reply, and ends the session on an "ended" event. */
+    /**
+     * The event for the first message Go accepts. Any device in range
+     * can write to a GATT server first: one whose message Go rejects (it
+     * never saw the QR code) is dropped, and the next first message, from
+     * any device, is handed to Go.
+     */
+    private suspend fun firstEvent(): String {
+        while (true) {
+            val event = handleMessage(transport.receive()).event
+            if (event != "rejected") return event
+            transport.reject()
+        }
+    }
+
+    /**
+     * Hands [message] to Go, sends its reply, and ends the session on an
+     * "ended" event. Any event but "rejected" commits the transport to
+     * the device that sent [message].
+     */
     private suspend fun handleMessage(message: ByteArray): EventJSON {
         val event = decode<EventJSON>(OID4VC.cancellable { op -> handle.handleMessage(op, message) })
+        if (event.event == "rejected") return event
+        transport.commit()
         event.send?.let { transport.send(it) }
         if (event.event == "ended") {
             finish(
@@ -1198,11 +1231,17 @@ public class ProximityReaderSession internal constructor(
 
     private suspend fun run() {
         try {
+            // The time to find the holder's device: to connect, and to pass
+            // over devices whose answers aren't the holder's (ReaderExchange).
+            val deadline = TimeSource.Monotonic.markNow() + timeouts.connect
             try {
                 withTimeout(timeouts.connect) { transport.connect() }
             } catch (e: TimeoutCancellationException) {
                 throw ProximityException(ProximityException.Reason.TimedOut, "the holder's device wasn't found", e)
             }
+            // The reader speaks first: as GATT server (central client
+            // mode), to the first device that started the session.
+            transport.commit()
             val elementsSerializer = MapSerializer(String.serializer(), ListSerializer(String.serializer()))
             val request = if (documents.size == 1) {
                 val elementsJSON = json.encodeToString(elementsSerializer, documents[0].elements)
@@ -1211,14 +1250,14 @@ public class ProximityReaderSession internal constructor(
                 val requestsJSON = json.encodeToString(ListSerializer(DocumentRequestJSON.serializer()), documents.map { DocumentRequestJSON(it.docType, it.elements) })
                 decode<SendJSON>(OID4VC.offMain { handle.requestDocuments(requestsJSON) })
             }
-            transport.send(request.send)
-            _state.compareAndSet(State.Connecting, State.WaitingForResponse)
-            val answer = try {
-                withTimeout(timeouts.idle) { transport.receive() }
-            } catch (e: TimeoutCancellationException) {
-                throw ProximityException(ProximityException.Reason.TimedOut, "the holder didn't respond in time", e)
-            }
-            val event = decode<ReaderEventJSON>(handle.handleMessage(answer))
+            // In mdoc peripheral server mode the reader connects to whichever
+            // device advertises the holder's service UUID: each answer is tried.
+            val passesOver = !usesNfcData && mode == ProximityBLEMode.PERIPHERAL_SERVER
+            val event = ReaderExchange(
+                transport, passesOver, deadline, timeouts.idle,
+                handle = { answer -> decode(if (passesOver) handle.tryHandleMessage(answer) else handle.handleMessage(answer)) },
+                sent = { _state.compareAndSet(State.Connecting, State.WaitingForResponse) },
+            ).run(request.send)
             sendLast(event)
             finish(
                 when {

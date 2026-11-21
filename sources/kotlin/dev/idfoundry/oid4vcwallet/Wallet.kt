@@ -142,6 +142,33 @@ public data class WalletConfiguration(
          * only a status list the issuer signed itself.
          */
         val statusIssuers: Map<String, List<String>> = emptyMap(),
+        /**
+         * The only Credential Issuer Identifiers the wallet takes offers
+         * from, each compared exactly with the offer's `credentialIssuer`:
+         * [Wallet.startIssuance] refuses another's offer with
+         * [WalletException.Code.untrustedIssuer] before fetching its
+         * metadata, so the holder is never asked for a transaction code it
+         * would send there. Resuming, refreshing and polling a deferred
+         * credential refuse an issuer the list no longer names the same
+         * way, keeping what the wallet holds from it.
+         *
+         * A wallet with [roots] (or the mdoc ones) must decide which
+         * issuers' offers it takes, or the [Wallet] constructor throws
+         * `invalidInput`: this list; signed issuer metadata naming its
+         * issuer ([IssuerMetadataTrust] with `roots`, `requireSigned` and
+         * `requireName`), which may be combined with it; or
+         * [allowAnyCredentialIssuer], alone.
+         */
+        val credentialIssuers: List<String> = emptyList(),
+        /**
+         * Takes offers from any issuer, in place of [credentialIssuers] or
+         * signed and named issuer metadata. A transaction code the holder
+         * enters then reaches whichever issuer an offer names, so an
+         * attacker's offer sent beside a genuine service's PIN phishes it:
+         * guarding against that is the app's. Set it only for a wallet
+         * whose issuers can't be told apart in advance.
+         */
+        val allowAnyCredentialIssuer: Boolean = false,
     )
 
     /** Which signed Credential Issuer Metadata the wallet trusts. */
@@ -512,6 +539,8 @@ internal data class WalletConfigurationJSON(
     @SerialName("issuer_require_eku") val issuerRequireEKU: String = "",
     @SerialName("issuer_metadata_require_eku") val issuerMetadataRequireEKU: String = "",
     @SerialName("allow_foreign_iss") val allowForeignIss: Boolean = false,
+    @SerialName("credential_issuers") val credentialIssuers: List<String> = emptyList(),
+    @SerialName("allow_any_credential_issuer") val allowAnyCredentialIssuer: Boolean = false,
     @SerialName("mdoc_issuer_roots") val mdocIssuerRoots: String = "",
     @SerialName("mdoc_issuer_roots_by_doctype") val mdocIssuerRootsByDocType: Map<String, String> = emptyMap(),
     @SerialName("mdoc_issuer_require_eku") val mdocIssuerRequireEKU: String = "",
@@ -575,6 +604,8 @@ internal object WalletConfigurationSerializer : KSerializer<WalletConfiguration>
         issuerRequireEKU = c.issuers.requireEKU,
         issuerMetadataRequireEKU = c.issuerMetadata.requireEKU,
         allowForeignIss = c.issuers.allowForeignIss,
+        credentialIssuers = c.issuers.credentialIssuers,
+        allowAnyCredentialIssuer = c.issuers.allowAnyCredentialIssuer,
         mdocIssuerRoots = c.issuers.mdocRoots,
         mdocIssuerRootsByDocType = c.issuers.mdocRootsByDocType,
         mdocIssuerRequireEKU = c.issuers.mdocRequireEKU,
@@ -605,6 +636,8 @@ internal object WalletConfigurationSerializer : KSerializer<WalletConfiguration>
             requireIssuerName = j.requireIssuerName,
             allowForeignIss = j.allowForeignIss,
             statusIssuers = j.statusIssuers,
+            credentialIssuers = j.credentialIssuers,
+            allowAnyCredentialIssuer = j.allowAnyCredentialIssuer,
         ),
         issuerMetadata = WalletConfiguration.IssuerMetadataTrust(
             roots = j.issuerMetadataRoots,
@@ -651,9 +684,12 @@ internal object WalletConfigurationSerializer : KSerializer<WalletConfiguration>
 /**
  * An image the issuer names for display: an https URL or a data: image
  * (nothing else reaches the app, nor an https URL naming an IP address or
- * localhost), with alternative text. Loading the URL tells whoever serves
- * it that the holder is looking: fetch it once, when the holder accepts
- * the credential rather than on the offer's preview, and keep it.
+ * a local name), with alternative text. Its host is judged by its name,
+ * and a public name can resolve to a private address: load the URL
+ * through a client that refuses to connect to a loopback, private or
+ * link-local address. Loading the URL tells whoever serves it that the
+ * holder is looking: fetch it once, when the holder accepts the
+ * credential rather than on the offer's preview, and keep it.
  *
  * @property uri The image: an https URL or a `data:` URL.
  * @property altText Text describing the image, for accessibility.
@@ -1160,16 +1196,33 @@ public class Wallet(
 
     /**
      * Fetches and verifies an OpenID4VP request (openid4vp://…), and
-     * finds the credentials that can answer it.
+     * finds the credentials that can answer it. A request the wallet
+     * refuses throws [WalletException.Code.requestRefused], whose
+     * [WalletException.refusalRedirect] is where the Verifier asked to
+     * take the holder.
      */
     public suspend fun startPresentation(request: String): Presentation =
-        Presentation(OID4VC.cancellable { op -> handle.startPresentation(op, request) })
+        Presentation(
+            OID4VC.cancellable { op ->
+                try {
+                    OID4VC.wrap { handle.startPresentation(op, request) }
+                } catch (e: WalletException) {
+                    // This call's own, not the latest of any call's.
+                    if (e.code == WalletException.Code.requestRefused) e.refusalRedirect = op.takeRefusalRedirect().ifEmpty { null }
+                    throw e
+                }
+            },
+        )
 
     /**
      * Where the Verifier asked to take the holder after the wallet
      * refused its request: when [startPresentation] throws
      * [WalletException.Code.requestRefused], open this URL, if any, as
-     * OpenID4VP §8.2 has a wallet do. It's returned once.
+     * OpenID4VP §8.2 has a wallet do. It's returned once. It holds the
+     * latest refusal of any call: with presentations started
+     * concurrently, open the exception's own
+     * [WalletException.refusalRedirect] instead, or one Verifier's
+     * redirect may be opened for another's refusal.
      */
     public fun takeRefusalRedirect(): String? = handle.takeRefusalRedirect().ifEmpty { null }
 
@@ -1273,7 +1326,11 @@ public class Wallet(
     /**
      * Offers QR/BLE and NFC with independent keys and one consent flow. A valid
      * NFC-to-BLE handover (full Hs read), NFC data application SELECT, or a
-     * completed QR BLE connection wins permanently. Type 4 discovery keeps QR available.
+     * QR BLE session started wins permanently. Type 4 discovery keeps QR available.
+     * A QR BLE session starts when any device in range first writes State 0x01 to
+     * the holder's GATT server (or, in central client mode, once the holder starts
+     * one with the reader), which needs no QR code: a device that never saw it can
+     * select QR, leaving NFC unavailable for the session.
      * NFC-only remains available without Bluetooth permission; then QR is omitted.
      * Closing a previous app-level NFC/combined owner finishes before replacement.
      */

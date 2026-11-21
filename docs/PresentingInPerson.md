@@ -186,7 +186,10 @@ says which it got: check it with a test reader.
 `cancel()` ends a session at any point, as the holder leaves the screen,
 say. `ProximityTimeouts` sets how long it waits: by default 60 seconds
 for a reader to connect, 30 for its request, and 300 for the holder to
-decide.
+decide. Any device in Bluetooth range can start a session with the
+holder, without the QR code, and the 30 seconds run from the first that
+does, not necessarily the reader: from then on the reader has that long
+to send its request.
 
 The state turns final before the session lets go of Bluetooth: after
 `Presented`, it waits up to 5 seconds for the reader to disconnect.
@@ -261,6 +264,20 @@ the IACA it chains to, and its validity. Decide which issuers to accept
 on `issuerChain`, the verified certificate path: `issuer` and
 `trustAnchor` are names any document signer under a trusted IACA can
 choose, for display.
+
+When the holder offers only mdoc peripheral server mode
+(`session.mode`), the reader connects to whichever device advertises
+the holder's Bluetooth service, which any device can copy from the
+holder's adverts. A device whose answer isn't the holder's (it doesn't
+decrypt, or is a bare decline, which isn't authenticated), or that
+drops the link before answering, is passed over, and the same request
+goes to the next one, within `ProximityTimeouts.connect`. So a
+holder's decline is reported as `Declined` once no other device
+advertises the holder's service for 5 seconds: a holder that hasn't
+connected goes on advertising, so another device's decline can't end
+the search. While other devices advertise it, a decline can take until
+`ProximityTimeouts.connect` ends: up to 60 seconds after the QR code
+was scanned, by default.
 
 With `statusCheck = StatusCheck.CHECK`, the session checks the
 document's revocation status before it's `Verified`, as

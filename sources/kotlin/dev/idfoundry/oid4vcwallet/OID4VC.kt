@@ -41,6 +41,17 @@ public class WalletException internal constructor(
     message: String,
 ) : Exception(message) {
     /**
+     * Where the Verifier asked to take the holder after the wallet refused its request: for
+     * a [Code.requestRefused] from [Wallet.startPresentation], the `redirect_uri` it answered
+     * the wallet's error with, null for none. Open it, as OpenID4VP §8.2 has a wallet do for a
+     * same-device request. It's this call's own, so presentations started concurrently each
+     * get their Verifier's, unlike [Wallet.takeRefusalRedirect]. Never in [message]. From
+     * OID4VCWallet 0.41.0.
+     */
+    public var refusalRedirect: String? = null
+        internal set
+
+    /**
      * An error code, as the Go side names it.
      *
      * @property rawValue The code as the Go side names it, such as `network`.
@@ -108,6 +119,16 @@ public class WalletException internal constructor(
              * doesn't chain to `verifiers.roots`: it's refused unread.
              */
             public val untrustedVerifier: Code = Code(Mobile.CodeUntrustedVerifier)
+            /**
+             * The offer names a Credential Issuer outside
+             * `issuers.credentialIssuers`: it's refused before fetching its
+             * metadata. Also an issuer whose metadata isn't signed, or is
+             * signed naming another issuer, under `issuerMetadata`'s
+             * `requireSigned` and `requireName`; and resuming, refreshing
+             * or polling a deferred credential from an issuer the list no
+             * longer names, which keeps what the wallet holds from it.
+             */
+            public val untrustedIssuer: Code = Code(Mobile.CodeUntrustedIssuer)
             /**
              * A pinned host's certificate matched none of its `tlsPins`: an
              * interception, or a server whose keys changed beyond its pins.
@@ -215,6 +236,7 @@ public class WalletException internal constructor(
             code == Code.documentNotValid && protocolError == "suspended" -> "This document is suspended."
             code == Code.documentNotValid -> "This document has been revoked or can't be confirmed as valid."
             code == Code.untrustedVerifier -> "This verifier isn't one your wallet trusts, so its request wasn't opened."
+            code == Code.untrustedIssuer -> "This issuer isn't one your wallet takes credentials from."
             code == Code.requestRefused -> "This verifier's request asks for something this wallet doesn't support, so it was refused."
             code == Code.profileViolation || code == Code.clientAuthUnsupported || code == Code.proofUnsupported ->
                 "This wallet can't receive credentials from this issuer."
@@ -283,7 +305,7 @@ public object OID4VC {
      * side changed without these sources — rather than misreading its
      * JSON. The Go tests keep it equal to the mobile package's.
      */
-    public const val expectedABIVersion: Int = 15
+    public const val expectedABIVersion: Int = 16
 
     /**
      * Whether the linked Go library is the test build, carrying an
